@@ -1,5 +1,5 @@
 import pymongo
-from pymilvus import connections, utility, Collection
+from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
 from sentence_transformers import SentenceTransformer
 
 class VectorDatabase:
@@ -20,9 +20,40 @@ class VectorDatabase:
     def connect_to_docker(self):
         connections.connect("default", host=self.milvus_host, port=self.milvus_port)
 
-    def initiate_vdb(self):
+    def create_vdb(self):
+        somelist = self.embeddings
         assert 'ColAI_search' not in utility.list_collections()
-        self.collection = self.recover_vdb(self.embeddings)
+
+        fields = [
+            FieldSchema(name="id", dtype=DataType.VARCHAR, max_length=500, is_primary=True, auto_id=False),
+            FieldSchema(name="title", dtype=DataType.VARCHAR, max_length=500),
+            FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=500),
+            FieldSchema(name="page_content", dtype=DataType.FLOAT_VECTOR, dim=384)
+        ]
+        collection_name = 'ColAI_search'
+        schema = CollectionSchema(fields, "search datasets")
+        self.collection = Collection(name=collection_name, schema=schema)
+
+        entities = [
+            [somelist[i]['id'] for i in range(len(somelist))],  # field id
+            [somelist[i]['title'] for i in range(len(somelist))],  # field title
+            [somelist[i]['source'] for i in range(len(somelist))],  # field source
+            [somelist[i]['page_content'] for i in range(len(somelist))]
+        ]
+        insert_result = self.collection.insert(entities)
+
+        index = {
+            "index_type": "IVF_FLAT",
+            "metric_type": "COSINE",
+            "params": {"nlist": 1024},
+        }
+        self.collection.create_index(
+            field_name="page_content", 
+            index_params=index
+        )
+
+        return self.collection
+
 
     def recover_vdb(self):
         assert 'ColAI_search' in utility.list_collections()
@@ -59,20 +90,21 @@ class VectorDatabase:
 # Example usage:
 if __name__ == "__main__":
     
+    # init
     client_url = ''
-
     vdb = VectorDatabase(client_url)
     vdb.load_embeddings()
     vdb.connect_to_docker()
     
-    # Initiate vdb # or recover vdb
-    vdb.initiate_vdb()
+    # create vdb # or recover vdb
+    vdb.create_vdb()
     #vdb.recover_vdb()
 
     vdb.load_collection()
 
-    # Search
+    # search
     query = 'found this data helpful, a vote is appreciated'
     ids = vdb.search(query)
 
+    # release
     vdb.release()
