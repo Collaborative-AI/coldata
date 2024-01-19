@@ -1,6 +1,7 @@
 import pymongo
 from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
 from sentence_transformers import SentenceTransformer
+import time
 
 class VectorDatabase:
     def __init__(self, client_url, milvus_host="localhost", milvus_port="19530", model=SentenceTransformer('all-MiniLM-L6-v2')):
@@ -52,8 +53,8 @@ class VectorDatabase:
             index_params=index
         )
 
-        return self.collection
-
+        time.sleep()
+        
 
     def recover_vdb(self):
         assert 'ColAI_search' in utility.list_collections()
