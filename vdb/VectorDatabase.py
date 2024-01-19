@@ -53,7 +53,7 @@ class VectorDatabase:
             index_params=index
         )
 
-        time.sleep()
+        time.sleep(5)
         
 
     def recover_vdb(self):
