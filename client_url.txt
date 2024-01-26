@@ -1,1 +1,0 @@
-CLIENT_URL='mongodb+srv://diaoenmao:Collaborative-AI@crawl-data.5blrkb2.mongodb.net/?retryWrites=true&w=majority'
