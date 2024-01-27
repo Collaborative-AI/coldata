@@ -1,0 +1,20 @@
+search:
+  query: 'found this data helpful, a vote is appreciated'
+  k: 10
+
+connection:
+  milvus_host: localhost
+  milvus_port: '19530'
+
+database:
+  client_url: ''
+  db_name: Crawl-Data
+  collection_name: metadata
+
+model:
+  chunk_size: 1024
+  chunk_overlap: 0
+  add_start_index: true
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+  model_kwargs: '{"device": "cpu"}'
+  encode_kwargs: '{"normalize_embeddings": false}'
