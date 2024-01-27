@@ -1,29 +1,11 @@
 import argparse
+import yaml
 import pymongo
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import Milvus
 from sentence_transformers import SentenceTransformer, util
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(description='Data Processor')
-    parser.add_argument('--milvus_host', default='localhost', help='Milvus host')
-    parser.add_argument('--milvus_port', default='19530', help='Milvus port')
-    parser.add_argument('--client_url', required=True, help='MongoDB client URL')
-    parser.add_argument('--db_name', default='Crawl-Data', help='Database name')
-    parser.add_argument('--collection_name', default='metadata', help='Collection name')
-    parser.add_argument('--chunk_size', type=int, default=1024, help='Chunk size')
-    parser.add_argument('--chunk_overlap', type=int, default=0, help='Chunk overlap')
-    parser.add_argument('--add_start_index', type=bool, default=True, help='Add start index')
-    parser.add_argument('--model_name', default='sentence-transformers/all-MiniLM-L6-v2', help='Model name')
-    parser.add_argument('--model_kwargs', default='{"device": "cpu"}', help='Model kwargs')
-    parser.add_argument('--encode_kwargs', default='{"normalize_embeddings": false}', help='Encode kwargs')
-    parser.add_argument('--query', default='found this data helpful, a vote is appreciated', help='Query string')
-    parser.add_argument('--k', type=int, choices=range(1, 11), default=10, help='Number of nearest neighbors (K)')
-
-    args = parser.parse_args()
-    return args
 
 class DataProcessor:
     def __init__(self, milvus_host, milvus_port, client_url, db_name, collection_name, chunk_size, chunk_overlap, add_start_index, model_name, model_kwargs, encode_kwargs, query, k):
@@ -125,25 +107,30 @@ class DataProcessor:
         file_embeddings_saved = list(collec.find())
         return
 
-
 def main():
-    args = parse_arguments()
+    parser = argparse.ArgumentParser(description='Data Processor')
+    parser.add_argument('--config', required=True, help='Path to the YAML config file')
+    args = parser.parse_args()
 
-    # Instantiate the DataProcessor class
+    # Parse the configuration from the YAML file
+    with open(args.config, 'r') as file:
+        config = yaml.safe_load(file)
+
+    # Instantiate the DataProcessor class using the parsed configuration
     data_processor = DataProcessor(
-        milvus_host=args.milvus_host,
-        milvus_port=args.milvus_port,
-        client_url=args.client_url,
-        db_name=args.db_name,
-        collection_name=args.collection_name,
-        chunk_size=args.chunk_size,
-        chunk_overlap=args.chunk_overlap,
-        add_start_index=args.add_start_index,
-        model_name=args.model_name,
-        model_kwargs=args.model_kwargs,
-        encode_kwargs=args.encode_kwargs,
-        query=args.query,
-        k=args.k
+        milvus_host=config['connection'].get('milvus_host', 'localhost'),
+        milvus_port=config['connection'].get('milvus_port', '19530'),
+        client_url=config['database'].get('client_url', ''),
+        db_name=config['database'].get('db_name', 'Crawl-Data'),
+        collection_name=config['database'].get('collection_name', 'metadata'),
+        chunk_size=config['model'].get('chunk_size', 1024),
+        chunk_overlap=config['model'].get('chunk_overlap', 0),
+        add_start_index=config['model'].get('add_start_index', True),
+        model_name=config['model'].get('model_name', 'sentence-transformers/all-MiniLM-L6-v2'),
+        model_kwargs=config['model'].get('model_kwargs', '{"device": "cpu"}'),
+        encode_kwargs=config['model'].get('encode_kwargs', '{"normalize_embeddings": false}'),
+        query=config['search'].get('query', 'found this data helpful, a vote is appreciated'),
+        k=config['search'].get('k', 10)
     )
 
     # Use the methods as needed
