@@ -2,6 +2,8 @@ import pymongo
 from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
 from sentence_transformers import SentenceTransformer
 import time
+import yaml
+import argparse
 
 class VectorDatabase:
     def __init__(self, client_url, milvus_host="localhost", milvus_port="19530", model=SentenceTransformer('all-MiniLM-L6-v2')):
@@ -23,6 +25,9 @@ class VectorDatabase:
 
     def create_vdb(self):
         somelist = self.embeddings
+        # check and drop
+        if "ColAI_search" in utility.list_collections():
+            utility.drop_collection("ColAI_search")
         assert 'ColAI_search' not in utility.list_collections()
 
         fields = [
@@ -90,12 +95,17 @@ class VectorDatabase:
 
 # Example usage:
 if __name__ == "__main__":
-    
+    parser = argparse.ArgumentParser(description='Vector Database')
+    parser.add_argument('--config', required=True, help='Path to the YAML config file')
+    args = parser.parse_args()
+    with open(args.config, 'r') as file:
+        config = yaml.safe_load(file)
+    client_url=config['database'].get('client_url', '')
     # init
-    client_url = ''
+    # print(client_url)
     vdb = VectorDatabase(client_url)
     vdb.load_embeddings()
-    vdb.connect_to_docker()
+    vdb.connect_to_docker()                                                                                                   
     
     # create vdb # or recover vdb
     vdb.create_vdb()

@@ -129,7 +129,7 @@ def main():
         model_name=config['model'].get('model_name', 'sentence-transformers/all-MiniLM-L6-v2'),
         model_kwargs=config['model'].get('model_kwargs', '{"device": "cpu"}'),
         encode_kwargs=config['model'].get('encode_kwargs', '{"normalize_embeddings": false}'),
-        query=config['search'].get('query', 'found this data helpful, a vote is appreciated'),
+        query=config['search'].get('query', 'found this data helpf ul, a vote is appreciated'),
         k=config['search'].get('k', 10)
     )
 
