@@ -7,7 +7,7 @@ connection:
   milvus_port: '19530'
 
 database:
-  client_url: ''
+  client_url: 'mongodb+srv://diaoenmao:Collaborative-AI@crawl-data.5blrkb2.mongodb.net/?retryWrites=true&w=majority'
   db_name: Crawl-Data
   collection_name: metadata
 
@@ -16,5 +16,7 @@ model:
   chunk_overlap: 0
   add_start_index: true
   model_name: sentence-transformers/all-MiniLM-L6-v2
-  model_kwargs: '{"device": "cpu"}'
-  encode_kwargs: '{"normalize_embeddings": false}'
+  model_kwargs: 
+    device: "cpu"
+  encode_kwargs: 
+    normalize_embeddings: false

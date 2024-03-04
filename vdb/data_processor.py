@@ -69,6 +69,8 @@ class DataProcessor:
     def create_embed_model(self):
         print(type(self.model_kwargs))
         print(self.model_kwargs)
+        print(type(self.encode_kwargs))
+        print(self.encode_kwargs)
         embed_model = HuggingFaceEmbeddings(
             model_name=self.model_name,
             model_kwargs=self.model_kwargs,
@@ -88,7 +90,7 @@ class DataProcessor:
 
     def embed(self, model, splitted_text):
         for i in range(len(splitted_text)):
-            splitted_text[i].page_content = model.encode([splitted_text[i].page_content], convert_to_tensor=True)[0].tolist()
+            splitted_text[i].page_content = model.embed_documents([splitted_text[i].page_content])[0]
         for i in range(len(splitted_text)):
             temp = splitted_text[i].metadata
             temp['page_content'] = splitted_text[i].page_content
@@ -127,17 +129,17 @@ def main():
         chunk_overlap=config['model'].get('chunk_overlap', 0),
         add_start_index=config['model'].get('add_start_index', True),
         model_name=config['model'].get('model_name', 'sentence-transformers/all-MiniLM-L6-v2'),
-        model_kwargs=config['model'].get('model_kwargs', '{"device": "cpu"}'),
+        model_kwargs=config['model'].get('model_kwargs', {}),
         encode_kwargs=config['model'].get('encode_kwargs', '{"normalize_embeddings": false}'),
         query=config['search'].get('query', 'found this data helpf ul, a vote is appreciated'),
         k=config['search'].get('k', 10)
     )
-
     # Use the methods as needed
     client = pymongo.MongoClient(data_processor.client_url)
     files = data_processor.load_data(client)
     docs = data_processor.convert_to_document(files)
     split_text = data_processor.split_texts(docs)
+    print(split_text[0])
     embed_model = data_processor.create_embed_model()
     vdb = data_processor.create_vector_store(split_text, embed_model)
     embedded_data = data_processor.embed(embed_model, split_text)

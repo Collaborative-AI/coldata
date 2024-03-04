@@ -95,14 +95,15 @@ class VectorDatabase:
 
 # Example usage:
 if __name__ == "__main__":
+    # init
     parser = argparse.ArgumentParser(description='Vector Database')
     parser.add_argument('--config', required=True, help='Path to the YAML config file')
     args = parser.parse_args()
     with open(args.config, 'r') as file:
         config = yaml.safe_load(file)
     client_url=config['database'].get('client_url', '')
-    # init
     # print(client_url)
+    
     vdb = VectorDatabase(client_url)
     vdb.load_embeddings()
     vdb.connect_to_docker()                                                                                                   
