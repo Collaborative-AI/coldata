@@ -64,6 +64,7 @@ class DataProcessor:
         for i, chunk in enumerate(split_text):
             chunk.metadata["chunk_id"] = str(i)
         print("text splitted")
+        print(split_text[0])
         return split_text
 
     def create_embed_model(self):
@@ -143,7 +144,7 @@ def main():
     embed_model = data_processor.create_embed_model()
     vdb = data_processor.create_vector_store(split_text, embed_model)
     embedded_data = data_processor.embed(embed_model, split_text)
-    data_processor.backup_embeddings(client, embedded_data)
+    #data_processor.backup_embeddings(client, embedded_data)
 
 if __name__ == '__main__':
     main()
