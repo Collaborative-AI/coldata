@@ -24,6 +24,7 @@ class VectorDatabase:
         connections.connect("default", host=self.milvus_host, port=self.milvus_port)
 
     def create_vdb(self):
+        
         somelist = self.embeddings
         # check and drop
         if "ColAI_search" in utility.list_collections():
