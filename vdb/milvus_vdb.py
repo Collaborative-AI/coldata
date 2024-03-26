@@ -8,6 +8,7 @@ from langchain.vectorstores import Milvus
 from sentence_transformers import SentenceTransformer, util
 from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
 import time
+from bson.objectid import ObjectId
 
 class DataProcessor:
     def __init__(self, milvus_host, milvus_port, client_url, db_name, collection_name, chunk_size, chunk_overlap, add_start_index, model_name, model_kwargs, encode_kwargs, query, k):
@@ -25,12 +26,14 @@ class DataProcessor:
         self.query = query
         self.k = k
         self.model = None
-        self.collection = None
+        self.milvus_collection = None
+        self.mongo_collection = None
 
     def load_data(self, client):
         db = client[self.db_name]
         print(db.list_collection_names())
         collection = db[self.collection_name]
+        self.mongo_collection = collection
         print(collection.count_documents({}))
         files = list(collection.find())
         print(files[0].keys())
@@ -52,10 +55,25 @@ class DataProcessor:
         return res
 
     def split_texts(self, doc):
+        search = ObjectId(doc[0].metadata["id"])
+        current = self.mongo_collection.find_one({"_id": search}).keys()
+        if "chunk_id" in current.keys():
+            return []
+        with open("chunk_count.txt", "r") as ref:
+            num = ref.read()
+            if not num:
+                num = 0
+            else:
+                num = int(num)
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap, add_start_index=self.add_start_index)
         split_text = text_splitter.split_documents(doc)
-        for i, chunk in enumerate(split_text):
-            chunk.metadata["chunk_id"] = str(i)
+        for chunk in range(len(split_text)):
+            split_text[chunk].metadata["chunk_id"] = str(num+chunk)
+        total = [str(i) for i in range(num, num+len(split_text))]
+        num += len(split_text)
+        with open("chunk_count.txt", "w") as ref:
+            ref.write(str(num))
+        self.mongo_collection.find_one_and_update({"_id": search}, {"$set": {"chunk_id": total}}, upsert = True)
         #print("text splitted")
         #print(split_text[156])
         return split_text
@@ -103,7 +121,7 @@ class DataProcessor:
             ]
             collection_name = 'ColAI_search'
             schema = CollectionSchema(fields, "search datasets")
-            self.collection = Collection(name=collection_name, schema=schema)
+            self.milvus_collection = Collection(name=collection_name, schema=schema)
             index = {
                 "index_type": "IVF_FLAT",
                 "metric_type": "COSINE",
@@ -115,21 +133,21 @@ class DataProcessor:
             )
 
         else:
-            self.collection = Collection(name='ColAI_search')
+            self.milvus_collection = Collection(name='ColAI_search')
         entities = [
             [somelist['id']],  # field id
             [somelist['title']],  # field title
             [somelist['source']],  # field source
             [somelist['page_content']]
         ]
-        insert_result = self.collection.insert(entities)
+        insert_result = self.milvus_collection.insert(entities)
 
     def recover_vdb(self):
         assert 'ColAI_search' in utility.list_collections()
-        self.collection = Collection(name='ColAI_search')
+        self.milvus_collection = Collection(name='ColAI_search')
 
     def load_collection(self):
-        self.collection.load()
+        self.milvus_collection.load()
 
     def search(self, query):
         search_params = {
@@ -154,7 +172,7 @@ class DataProcessor:
         return ids
 
     def release(self):
-        self.collection.release()
+        self.milvus_collection.release()
 
 def main():
     parser = argparse.ArgumentParser(description='Data Processor')
@@ -188,10 +206,10 @@ def main():
     for file in files[:100]:
         docs.append(data_processor.convert_to_document(file))
     split_text = []
-    split_text = data_processor.split_texts(docs)
     for doc in docs:
-        split_text += data_processor.split_texts([doc])
-        
+        res = data_processor.split_texts([doc])
+        split_text += res
+
     embed_model = data_processor.create_embed_model()
     embedded_data = data_processor.embed(embed_model, split_text)
     data_processor.connect_to_docker()
