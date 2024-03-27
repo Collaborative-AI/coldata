@@ -7,8 +7,7 @@ connection:
   milvus_port: '19530'
 
 database:
-  client_url: 'mongodb+srv://diaoenmao:Collaborative-AI@crawl-data.5blrkb2.mongodb.net/?retryWrites=true&w=majority'
-  db_name: Crawl-Data
+  client_url: ''
   collection_name: metadata
 
 model:
