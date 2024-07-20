@@ -1,12 +1,23 @@
+import argparse
 import sys
+import yaml
+import pymongo
+from langchain.schema import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.vectorstores import Milvus
+from sentence_transformers import SentenceTransformer, util
+from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
+import time
+from bson.objectid import ObjectId
 
 # Add the directory containing the modules to the Python path
-sys.path.append('crawler/modelized_crawler')  # Add 'crawler' directory to path
+sys.path.append('crawler')  # Add 'crawler' directory to path
 sys.path.append('vdb')      # Add 'vdb' directory to path
 
-from uci import UCI
-from kaggle import Kaggle
-from milvus_vdb import DataProcessor
+from crawler.uci import UCI
+from crawler.kaggle import Kaggle
+from vdb.milvus_vdb import DataProcessor
 
 
 def main():

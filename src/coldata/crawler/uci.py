@@ -1,4 +1,4 @@
-from crawler import Crawler
+from .crawler import Crawler
 import requests
 import numpy
 import pandas as pd

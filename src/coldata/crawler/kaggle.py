@@ -2,7 +2,7 @@ import threading
 import time
 import subprocess
 from kaggle.api.kaggle_api_extended import KaggleApi
-from crawler import Crawler
+from .crawler import Crawler
 import requests
 import numpy
 import pandas as pd
