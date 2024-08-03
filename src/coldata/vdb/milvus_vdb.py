@@ -131,6 +131,9 @@ class DataProcessor:
                 field_name="page_content", 
                 index_params=index
             )
+            while not self.milvus_collection.has_index():
+                print("Waiting for index creation to complete...")
+                time.sleep(5)
 
         else:
             self.milvus_collection = Collection(name='ColAI_search')
