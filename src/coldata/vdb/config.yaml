@@ -16,7 +16,7 @@ model:
   chunk_overlap: 0
   add_start_index: true
   model_name: sentence-transformers/all-MiniLM-L6-v2
-  model_kwargs: 
+  model_kwargs:
     device: "cpu"
-  encode_kwargs: 
+  encode_kwargs:
     normalize_embeddings: false

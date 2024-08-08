@@ -1,10 +1,8 @@
-from coldata.crawler import UCI
+import coldata
 
-UCIs = UCI()
+UCIs = coldata.crawler.UCI()
 UCIs.process_data()
 UCIs.upload_data()
 
-from crawler.kaggle import Kaggle
-
-Kaggle().process_data()
-Kaggle().upload_data()
+coldata.crawler.Kaggle().process_data()
+coldata.crawler.Kaggle().upload_data()

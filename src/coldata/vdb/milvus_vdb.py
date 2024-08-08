@@ -10,8 +10,10 @@ from pymilvus import connections, utility, DataType, FieldSchema, CollectionSche
 import time
 from bson.objectid import ObjectId
 
+
 class DataProcessor:
-    def __init__(self, milvus_host, milvus_port, client_url, db_name, collection_name, chunk_size, chunk_overlap, add_start_index, model_name, model_kwargs, encode_kwargs, query, k):
+    def __init__(self, milvus_host, milvus_port, client_url, db_name, collection_name, chunk_size, chunk_overlap,
+                 add_start_index, model_name, model_kwargs, encode_kwargs, query, k):
         self.milvus_host = milvus_host
         self.milvus_port = milvus_port
         self.client_url = client_url
@@ -44,14 +46,15 @@ class DataProcessor:
     def convert_to_document(self, file):
         content = ""
         try:
-                content = file['descriptionNullable']  # #uci
+            content = file['descriptionNullable']  # #uci
         except:
-                content = file['Description']  # #kaggle
+            content = file['Description']  # #kaggle
         try:
-                title = file['title']  # #uci
+            title = file['title']  # #uci
         except:
-                title = file['Title']  # #kaggle
-        res = Document(page_content=content,metadata={"title": title, "source": file['url'], "id": str(file["_id"]), "chunk_id": ""})
+            title = file['Title']  # #kaggle
+        res = Document(page_content=content,
+                       metadata={"title": title, "source": file['url'], "id": str(file["_id"]), "chunk_id": ""})
         return res
 
     def split_texts(self, doc):
@@ -65,17 +68,18 @@ class DataProcessor:
                 num = 0
             else:
                 num = int(num)
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap, add_start_index=self.add_start_index)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size, chunk_overlap=self.chunk_overlap,
+                                                       add_start_index=self.add_start_index)
         split_text = text_splitter.split_documents(doc)
         for chunk in range(len(split_text)):
-            split_text[chunk].metadata["chunk_id"] = str(num+chunk)
-        total = [str(i) for i in range(num, num+len(split_text))]
+            split_text[chunk].metadata["chunk_id"] = str(num + chunk)
+        total = [str(i) for i in range(num, num + len(split_text))]
         num += len(split_text)
         with open("chunk_count.txt", "w") as ref:
             ref.write(str(num))
-        self.mongo_collection.find_one_and_update({"_id": search}, {"$set": {"chunk_id": total}}, upsert = True)
-        #print("text splitted")
-        #print(split_text[156])
+        self.mongo_collection.find_one_and_update({"_id": search}, {"$set": {"chunk_id": total}}, upsert=True)
+        # print("text splitted")
+        # print(split_text[156])
         return split_text
 
     def create_embed_model(self):
@@ -108,8 +112,8 @@ class DataProcessor:
     def connect_to_docker(self):
         connections.connect("default", host=self.milvus_host, port=self.milvus_port)
 
-    def update_vdb(self,embeddings):
-        
+    def update_vdb(self, embeddings):
+
         somelist = embeddings
         # check and drop
         if "ColAI_search" not in utility.list_collections():
@@ -128,7 +132,7 @@ class DataProcessor:
                 "params": {"nlist": 1024},
             }
             self.milvus_collection.create_index(
-                field_name="page_content", 
+                field_name="page_content",
                 index_params=index
             )
             while not self.milvus_collection.has_index():
@@ -154,13 +158,13 @@ class DataProcessor:
 
     def search(self, query):
         search_params = {
-            "metric_type": "COSINE",  
+            "metric_type": "COSINE",
             "params": {"nprobe": 10}
         }
 
         results = self.milvus_collection.search(
-            data=[self.model.encode([query], convert_to_tensor=True)[0].tolist()], 
-            anns_field="page_content", 
+            data=[self.model.encode([query], convert_to_tensor=True)[0].tolist()],
+            anns_field="page_content",
             param=search_params,
             limit=2,
             expr=None,
@@ -176,6 +180,7 @@ class DataProcessor:
 
     def release(self):
         self.milvus_collection.release()
+
 
 def main():
     parser = argparse.ArgumentParser(description='Data Processor')
@@ -218,7 +223,7 @@ def main():
     data_processor.connect_to_docker()
     for data in embedded_data:
         data_processor.update_vdb(data)
-    #vdb.recover_vdb()
+    # vdb.recover_vdb()
 
     data_processor.load_collection()
 
@@ -229,6 +234,6 @@ def main():
     # release
     data_processor.release()
 
+
 if __name__ == '__main__':
     main()
-

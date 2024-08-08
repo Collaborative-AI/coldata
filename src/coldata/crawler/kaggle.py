@@ -1,16 +1,8 @@
-import threading
 import time
-import subprocess
-from kaggle.api.kaggle_api_extended import KaggleApi
-from .crawler import Crawler
-import requests
-import numpy
-import pandas as pd
-from bs4 import BeautifulSoup as bs
-from tqdm import tqdm
+import kaggle
 import json
 import os
-import pymongo
+from .crawler import Crawler
 
 
 class Kaggle(Crawler):
@@ -20,7 +12,7 @@ class Kaggle(Crawler):
         self.uploadcount = 0
 
     def process_data(self):
-        api = KaggleApi()
+        api = kaggle.KaggleApi()
         # os.environ['KAGGLE_CONFIG_DIR'] = '/content'
         api.authenticate()
         # Updated Version
@@ -74,7 +66,7 @@ class Kaggle(Crawler):
         count = 0
         # os.environ['KAGGLE_CONFIG_DIR'] = '/content'
         api.authenticate()
-        record =self.collection.distinct("url")
+        record = self.collection.distinct("url")
         datasets = api.dataset_list(page=1000, sort_by="updated")
         print("start")
         for dataset in datasets:

@@ -1,10 +1,3 @@
-import requests
-import numpy
-import pandas as pd
-from bs4 import BeautifulSoup as bs
-from tqdm import tqdm
-import json
-import os
 import pymongo
 
 
@@ -14,7 +7,7 @@ class Crawler:
         self.dt = {}
         self.url = ""
 
-        client = pymongo.MongoClient(open('mongodb.txt','r').read())
+        client = pymongo.MongoClient(open('mongodb.txt', 'r').read())
         db = client['Crawl-Data']
         self.collection = db['metadata']
 

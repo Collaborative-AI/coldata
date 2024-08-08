@@ -1,6 +1,5 @@
 from .crawler import Crawler
 import requests
-import numpy
 import pandas as pd
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm

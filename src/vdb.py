@@ -1,23 +1,7 @@
 import argparse
-import sys
 import yaml
 import pymongo
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Milvus
-from sentence_transformers import SentenceTransformer, util
-from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
-import time
-from bson.objectid import ObjectId
-
-# Add the directory containing the modules to the Python path
-sys.path.append('crawler')  # Add 'crawler' directory to path
-sys.path.append('vdb')      # Add 'vdb' directory to path
-
-from crawler.uci import UCI
-from crawler.kaggle import Kaggle
-from vdb.milvus_vdb import DataProcessor
+import coldata
 
 
 def main():
@@ -29,18 +13,18 @@ def main():
     with open(args.config, 'r') as file:
         config = yaml.safe_load(file)
 
-    #ingest UCI
-    UCIs = UCI()
+    # ingest UCI
+    UCIs = coldata.crawler.UCI()
     UCIs.process_data()
     UCIs.upload_data()
-    
-    #ingest kaggle
-    Kaggle().process_data()
-    Kaggle().upload_data()
-    
-    #vdb updates
+
+    # ingest kaggle
+    coldata.crawler.Kaggle().process_data()
+    coldata.crawler.Kaggle().upload_data()
+
+    # vdb updates
     # Instantiate the DataProcessor class using the parsed configuration
-    data_processor = DataProcessor(
+    data_processor = coldata.vdb.DataProcessor(
         milvus_host=config['connection'].get('milvus_host', 'localhost'),
         milvus_port=config['connection'].get('milvus_port', '19530'),
         client_url=config['database'].get('client_url', ''),
@@ -71,8 +55,8 @@ def main():
     data_processor.connect_to_docker()
     for data in embedded_data:
         data_processor.update_vdb(data)
-    #vdb.recover_vdb()
-    #testing for search
+    # vdb.recover_vdb()
+    # testing for search
     '''
     data_processor.load_collection()
 
@@ -83,6 +67,7 @@ def main():
     # release
     data_processor.release()
     '''
+
+
 if __name__ == '__main__':
     main()
-

@@ -1,2 +1,1 @@
-from .crawler import *
-from .vdb import *
+from . import crawler, vdb
