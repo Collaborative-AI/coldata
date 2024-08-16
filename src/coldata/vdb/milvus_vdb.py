@@ -3,9 +3,8 @@ import yaml
 import pymongo
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Milvus
-from sentence_transformers import SentenceTransformer, util
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from sentence_transformers import SentenceTransformer
 from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
 import time
 from bson.objectid import ObjectId

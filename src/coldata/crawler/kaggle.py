@@ -6,8 +6,8 @@ from .crawler import Crawler
 
 
 class Kaggle(Crawler):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, mongodb_key_path, attempts=None):
+        super().__init__(mongodb_key_path, attempts)
         self.processcount = 0
         self.uploadcount = 0
 
@@ -62,7 +62,7 @@ class Kaggle(Crawler):
             print("fully uploaded")
 
     def kaggle_updates(self):
-        api = KaggleApi()
+        api = kaggle.KaggleApi()
         count = 0
         # os.environ['KAGGLE_CONFIG_DIR'] = '/content'
         api.authenticate()
