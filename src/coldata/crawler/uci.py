@@ -7,15 +7,15 @@ from .crawler import Crawler
 
 
 class UCI(Crawler):
-    def __init__(self, mongodb_key_path, attempts=None, max_num_datasets=1000):
+    def __init__(self, mongodb_key_path, attempts=None, num_datasets_per_query=1000):
         super().__init__(mongodb_key_path, attempts)
         self.data_name = 'UCI'
-        self.max_num_datasets = max_num_datasets
+        self.num_datasets_per_query = num_datasets_per_query
         self.root_url = 'https://archive.ics.uci.edu'
 
     def make_url(self):
         url = set()
-        URL = self.root_url + f'/datasets?skip=0&take={self.max_num_datasets}&sort=desc&orderBy=NumHits&search='
+        URL = self.root_url + f'/datasets?skip=0&take={self.num_datasets_per_query}&sort=desc&orderBy=NumHits&search='
         page = requests.get(URL)
         soup = bs(page.content, 'html.parser')
         for h2 in soup.find_all('h2'):

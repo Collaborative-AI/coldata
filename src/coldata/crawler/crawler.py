@@ -1,7 +1,7 @@
 import pymongo
 import os
 from abc import abstractmethod
-
+from collections import defaultdict
 
 class Crawler:
     def __init__(self, mongodb_key_path, attempts=None):
@@ -33,3 +33,17 @@ class Crawler:
         Subclasses must implement this method.
         """
         pass
+
+    def collection_structure(self, sample_size=100):
+        schema = defaultdict(set)
+        try:
+            cursor = self.collection.find().limit(sample_size)
+            for doc in cursor:
+                for key, value in doc.items():
+                    schema[key].add(type(value).__name__)
+            print("Collection Structure:")
+            for key, value_types in schema.items():
+                print(f"{key}: {', '.join(value_types)}")
+        except Exception as e:
+            raise Exception(f"Error analyzing collection structure: {e}")
+        return
