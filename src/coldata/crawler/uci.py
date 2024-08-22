@@ -7,9 +7,10 @@ from .crawler import Crawler
 
 
 class UCI(Crawler):
-    def __init__(self, mongodb_key_path, attempts=None, num_datasets_per_query=1000):
-        super().__init__(mongodb_key_path, attempts)
-        self.data_name = 'UCI'
+    data_name = 'UCI'
+
+    def __init__(self, key, num_attempts=None, num_datasets_per_query=1000):
+        super().__init__(self.data_name, key, num_attempts)
         self.num_datasets_per_query = num_datasets_per_query
         self.root_url = 'https://archive.ics.uci.edu'
 
@@ -32,8 +33,8 @@ class UCI(Crawler):
     def crawl(self):
         url = self.make_url()
         table = self.make_table(url)
-        if self.attempts is not None:
-            indices = range(self.attempts)
+        if self.num_attempts is not None:
+            indices = range(self.num_attempts)
         else:
             indices = range(len(list(url)))
         print(f'Start crawling ({self.data_name})...')

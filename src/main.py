@@ -1,12 +1,14 @@
-import os
+import yaml
 import coldata
 
 
 def main():
-    attempts = 1
-    mongodb_key_path = os.path.join('key', 'mongodb.txt')
-
-    uci = coldata.crawler.UCI(mongodb_key_path, attempts=attempts)
+    mode = 'local'
+    config_path = 'config.yml'
+    with open(config_path, 'r') as file:
+        config = yaml.safe_load(file)
+    uci = coldata.crawler.UCI(key=config['key'][mode], num_attempts=config['crawl']['num_attempts'],
+                              **config['crawl']['dataset']['uci'])
     uci.crawl()
     uci.upload()
 
