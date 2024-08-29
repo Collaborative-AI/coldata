@@ -12,9 +12,10 @@ def main():
     uci.crawl()
     uci.upload()
 
-    # kaggle = coldata.crawler.Kaggle(mongodb_key_path, attempts=attempts)
-    # kaggle.crawl()
-    # kaggle.upload()
+    kaggle = coldata.crawler.Kaggle(key=config['key'][mode], num_attempts=config['crawl']['num_attempts'],
+                                    **config['crawl']['dataset']['kaggle'])
+    kaggle.crawl()
+    kaggle.upload()
     return
 
 

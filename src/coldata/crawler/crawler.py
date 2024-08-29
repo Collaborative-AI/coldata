@@ -9,6 +9,7 @@ class Crawler:
         self.num_attempts = num_attempts
         self.client = pymongo.MongoClient(self.key['string'])
         self.collection = self.client[self.key['db_name']][data_name]
+        self.collection.create_index([('index', pymongo.ASCENDING)], name='index')
 
     @abstractmethod
     def crawl(self):

@@ -1,4 +1,5 @@
 import json
+import hashlib
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup as bs
@@ -27,7 +28,8 @@ class UCI(Crawler):
     def make_table(self, url):
         page = requests.get(self.root_url + url[0])
         soup = bs(page.text, 'html.parser')
-        table = pd.DataFrame(columns=['Title', 'Description'] + [i.text for i in soup.find_all('h1')][1:7] + ['URL'])
+        table = pd.DataFrame(columns=['index'] + ['Title', 'Description'] +
+                                     [i.text for i in soup.find_all('h1')][1:7] + ['URL'])
         return table
 
     def crawl(self):
@@ -39,21 +41,24 @@ class UCI(Crawler):
             indices = range(len(list(url)))
         print(f'Start crawling ({self.data_name})...')
         for i in tqdm(indices):
-            url_i = url[i]
-            page_i = requests.get(self.root_url + url_i)
+            url_i = self.root_url + url[i]
+            page_i = requests.get(url_i)
             soup_i = bs(page_i.text, 'html.parser')
-            table.loc[len(table)] = [soup_i.find('h1').text] + [i.text for i in soup_i.find_all('p')][:7] + \
+            index_i = hashlib.sha256(url_i.encode()).hexdigest()
+            table.loc[len(table)] = [index_i] + [soup_i.find('h1').text] + \
+                                    [i.text for i in soup_i.find_all('p')][:7] + \
                                     [self.root_url + url_i]
-        self.data = json.loads(table.to_json(orient='records'))
+        data = table.to_json(orient='records')
+        self.data = json.loads(data)
         return self.data
 
     def upload(self):
         count = 0
         print(f'Start uploading ({self.data_name})...')
         for data in tqdm(self.data):
-            existing_data = self.collection.find_one({'URL': data['URL']})
+            existing_data = self.collection.find_one({'index': data['index']})
             if existing_data is None:
                 self.collection.insert_one(data)
                 count += 1
-        print(f'Insert {count} number of data')
+        print(f'Insert {count} records.')
         return

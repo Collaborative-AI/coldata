@@ -2,7 +2,7 @@ crawl:
   num_attempts: 1
   dataset:
     uci:
-      num_datasets_per_query: 20
+      num_datasets_per_query: 1000
     kaggle:
       num_datasets_per_query: 20
 key:

@@ -1,4 +1,4 @@
-import time
+import hashlib
 import kaggle
 import json
 import os
@@ -6,106 +6,50 @@ from .crawler import Crawler
 
 
 class Kaggle(Crawler):
-    def __init__(self, mongodb_key_path, attempts=None, num_datasets_per_query=20):
-        super().__init__(mongodb_key_path, attempts)
-        self.data_name = 'Kaggle'
+    data_name = 'Kaggle'
+
+    def __init__(self, key, num_attempts=None, num_datasets_per_query=20):
+        super().__init__(self.data_name, key, num_attempts)
         self.num_datasets_per_query = num_datasets_per_query
-        self.processcount = 0
-        self.uploadcount = 0
+        self.json_path = os.path.join('output', 'json')
+        self.tmp_metadata_filename = 'dataset-metadata.json'
 
     def crawl(self):
+        attempts_count = 0
         api = kaggle.KaggleApi()
         api.authenticate()
-        record = self.collection.distinct('url')
         datasets = api.dataset_list(page=self.num_datasets_per_query)
         for dataset in datasets:
-            if dataset.url not in record:
+            if self.num_attempts is not None and attempts_count < self.num_attempts:
                 try:
-                    metadata = api.dataset_metadata(dataset.ref, path=os.path.join('content', 'metadata.json'))
+                    api.dataset_metadata(dataset.ref, path=self.json_path)
                 except:
                     continue
-                directory = '/content/metadata.json'
-                filename = 'dataset-metadata.json'
-                file_path = os.path.join(directory, filename)
-                with open(file_path, 'r') as metadata_file:
-                    metadata = json.load(metadata_file)
-                    metadata['name'] = dataset.ref
-                    metadata['url'] = dataset.url
-                directory = '/content/metadata.json'
-                filename_template = 'kaggle{}.json'.format(self.processcount)
-                filename = os.path.join(directory, filename_template)
-                with open(filename, 'w') as final_file:
-                    json.dump(metadata, final_file)
-                self.processcount += 1
+                index = hashlib.sha256(dataset.url.encode()).hexdigest()
+                filename_template_i = '{}.json'.format(index)
+                data_path = os.path.join(self.json_path, filename_template_i)
+                if not os.path.exists(data_path):
+                    with open(os.path.join(self.json_path, self.tmp_metadata_filename), 'r') as file:
+                        data = json.load(file)
+                        data['index'] = index
+                        data['ref'] = dataset.ref
+                        data['URL'] = dataset.url
+                    with open(data_path, 'w') as file:
+                        json.dump(data, file)
+                    attempts_count += 1
+        os.remove(os.path.join(self.json_path, self.tmp_metadata_filename))
         return
 
     def upload(self):
-        output_folder = '/content/metadata.json/'
-        print(self.processcount)
-        while True:
-            filename = os.path.join(output_folder, f'kaggle{self.processcount}.json')
-            try:
-                with open(filename, 'r') as file:
-                    metadata = json.load(file)
-                    print(metadata['url'])
-                    existing_data = self.collection.find_one({'url': metadata['url']})
-                    if existing_data is None:
-                        print('add')
-                        # Data is not in the collection, so insert it
-                        self.collection.insert_one(metadata)
-                self.uploadcount += 1
-            except FileNotFoundError:
-                break
-        if self.processcount == self.uploadcount:
-            print('fully uploaded')
-
-    # def kaggle_updates(self):
-    #     api = kaggle.KaggleApi()
-    #     count = 0
-    #     # os.environ['KAGGLE_CONFIG_DIR'] = '/content'
-    #     api.authenticate()
-    #     record = self.collection.distinct('url')
-    #     datasets = api.dataset_list(page=1000, sort_by='updated')
-    #     print('start')
-    #     for dataset in datasets:
-    #         print(dataset.url in record)
-    #         # need to download the metadatafile and read it each time to get information
-    #         if dataset.url not in record:
-    #             try:
-    #                 metadata = api.dataset_metadata(dataset.ref, path=os.path.join('/content', 'metadata.json'))
-    #             except:
-    #                 continue
-    #             directory = '/content/metadata.json'
-    #             filename = 'dataset-metadata.json'
-    #             file_path = os.path.join(directory, filename)
-    #             with open(file_path, 'r') as metadata_file:
-    #                 metadata = json.load(metadata_file)
-    #                 metadata['name'] = dataset.ref
-    #                 metadata['url'] = dataset.url
-    #             directory = '/content/metadata.json'
-    #             filename_template = 'kaggle{}.json'.format(self.processcount)
-    #             filename = os.path.join(directory, filename_template)
-    #             with open(filename, 'w') as final_file:
-    #                 json.dump(metadata, final_file)
-    #         else:
-    #             break
-    #     print('end')
-    #     output_folder = '/content/metadata.json/'
-    #     print(self.processcount)
-    #     while True:
-    #         filename = os.path.join(output_folder, f'kaggle{self.processcount}.json')
-    #         try:
-    #             with open(filename, 'r') as file:
-    #                 metadata = json.load(file)
-    #                 print(metadata['url'])
-    #                 existing_data = self.collection.find_one({'url': metadata['url']})
-    #                 if existing_data is None:
-    #                     print('add')
-    #                     # Data is not in the collection, so insert it
-    #                     self.collection.insert_one(metadata)
-    #             self.uploadcount += 1
-    #         except FileNotFoundError:
-    #             break
-    #     if self.processcount == self.uploadcount:
-    #         print('fully uploaded')
-    #     time.sleep(60 * 60 * 24)
+        count = 0
+        print(f'Start uploading ({self.data_name})...')
+        json_file_names = os.listdir(self.json_path)
+        for json_file_name in json_file_names:
+            with open(os.path.join(self.json_path, json_file_name), 'r') as file:
+                data = json.load(file)
+                existing_data = self.collection.find_one({'index': data['index']})
+                if existing_data is None:
+                    self.collection.insert_one(data)
+                    count += 1
+        print(f'Insert {count} records')
+        return
