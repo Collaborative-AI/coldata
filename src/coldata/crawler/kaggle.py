@@ -8,17 +8,28 @@ from .crawler import Crawler
 class Kaggle(Crawler):
     data_name = 'Kaggle'
 
-    def __init__(self, key, num_attempts=None, num_datasets_per_query=20):
+    def __init__(self, key, init_page=1, num_attempts=None):
         super().__init__(self.data_name, key, num_attempts)
-        self.num_datasets_per_query = num_datasets_per_query
         self.json_path = os.path.join('output', 'json')
         self.tmp_metadata_filename = 'dataset-metadata.json'
+        self.init_page = init_page
 
     def crawl(self):
         attempts_count = 0
         api = kaggle.KaggleApi()
         api.authenticate()
-        datasets = api.dataset_list(page=self.num_datasets_per_query)
+
+        self.page = self.init_page
+        datasets = []
+        while True:
+            result = api.dataset_list(page=self.page)
+            if not result or (self.num_attempts is not None and attempts_count >= self.num_attempts):
+                break
+            datasets.extend(result)
+            attempts_count += len(result)
+            self.page += 1
+
+        attempts_count = 0
         for dataset in datasets:
             if self.num_attempts is not None and attempts_count < self.num_attempts:
                 try:
@@ -37,7 +48,7 @@ class Kaggle(Crawler):
                     with open(data_path, 'w') as file:
                         json.dump(data, file)
                     attempts_count += 1
-        os.remove(os.path.join(self.json_path, self.tmp_metadata_filename))
+                    os.remove(os.path.join(self.json_path, self.tmp_metadata_filename))
         return
 
     def upload(self):

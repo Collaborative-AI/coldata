@@ -4,7 +4,7 @@ crawl:
     uci:
       num_datasets_per_query: 1000
     kaggle:
-      num_datasets_per_query: 20
+      init_page: 1
 key:
   local:
     string: "mongodb://localhost:27017"
