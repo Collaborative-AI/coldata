@@ -1,1 +1,1 @@
-from .milvus_vdb import DataProcessor
+from .vdb import VDB
