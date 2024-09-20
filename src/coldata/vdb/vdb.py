@@ -1,7 +1,4 @@
-import argparse
 import os
-import yaml
-import pymongo
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -52,6 +49,7 @@ class VDB:
         self.flush()
         return
 
+    ## TODO: batch queries
     def search(self, query):
         embedding = self.make_embedding_from_query(query)
         search_params = {
@@ -74,6 +72,7 @@ class VDB:
         for record in records:
             document = self.record_to_document(record)
             splitted_documents = self.text_splitter.split_documents([document])
+            ## TODO: add splitted index
             documents.extend(splitted_documents)
         return documents
 

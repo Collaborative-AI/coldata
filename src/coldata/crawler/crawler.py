@@ -2,7 +2,7 @@ import pymongo
 from abc import abstractmethod
 from collections import defaultdict
 
-
+## TODO: merge datasets into one collection
 class Crawler:
     def __init__(self, data_name, key, num_attempts, **kwargs):
         self.key = key
