@@ -16,13 +16,24 @@ mongodb:
     string: mongodb+srv://diaoenmao:ColAI2023@crawl-data.5blrkb2.mongodb.net/?retryWrites=true&w=majority&appName=Crawl-Data
     db_name: Crawl-Data
 vdb:
-  host: localhost
-  port: '19530'
+  milvus:
+    collection_name: 'dataset'
+    alias: default
+    host: localhost
+    port: '19530'
+    index_type: IVF_FLAT
+    metric_type: IP
+    nlist: 128
+    nprobe: 128
+    limit: 4
   text:
     chunk_size: 1024
     chunk_overlap: 256
     add_start_index: true
   model:
-    model_name: sentence-transformers/all-MiniLM-L6-v2
-    normalize_embeddings: false
+    model_name: all-mpnet-base-v2
+    cache_folder: output/model
+    multi_process: False
+    show_progress: True
     device: cpu
+    normalize_embeddings: False

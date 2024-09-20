@@ -1,32 +1,71 @@
 import argparse
+import os
 import yaml
 import pymongo
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from sentence_transformers import SentenceTransformer
+from langchain_huggingface import HuggingFaceEmbeddings
 from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
-import time
 
 
 class VDB:
-    def __init__(self, host, port, model_name, chunk_size=1024, chunk_overlap=256, add_start_index=True,
-                 normalize_embeddings=False, device='cpu'):
+    def __init__(self, collection_name='dataset', alias='default', host='localhost', port='19530',
+                 index_type='IVF_FLAT', metric_type='IP', nlist=1024, nprobe=1024, limit=4,
+                 chunk_size=1024, chunk_overlap=256, add_start_index=True,
+                 model_name='all-mpnet-base-v2', cache_folder='output', multi_process=False, show_progress=True,
+                 device='cpu', normalize_embeddings=False):
+        self.collection_name = collection_name
+        self.alias = alias
         self.host = host
         self.port = port
+        self.index_type = index_type
+        self.metric_type = metric_type
+        self.nlist = nlist
+        self.nprobe = nprobe
+        self.limit = limit
+
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.add_start_index = add_start_index
+
         self.model_name = model_name
-        self.normalize_embeddings = normalize_embeddings
+        self.cache_folder = cache_folder
+        self.multi_process = multi_process
+        self.show_progress = show_progress
         self.device = device
+        self.normalize_embeddings = normalize_embeddings
+
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size,
                                                             chunk_overlap=self.chunk_overlap,
                                                             add_start_index=self.add_start_index)
+        self.embedding_model = self.make_embedding_model()
+        self.embedding_size = self.make_embedding_size()
+        self.connect_to_milvus()
+        self.collection = self.make_collection()
+        self.load()
 
-    def process(self, database):
+    def update(self, database):
         documents = self.make_documents(database)
+        embeddings = self.make_embeddings_from_documents(documents)
+        index = self.make_index(documents)
+        self.insert(index, embeddings)
+        self.flush()
         return
+
+    def search(self, query):
+        embedding = self.make_embedding_from_query(query)
+        search_params = {
+            "metric_type": self.metric_type,
+            "params": {"nprobe": self.nprobe}
+        }
+        result = self.collection.search(
+            data=[embedding],  # The query vector(s)
+            anns_field="vector",  # The name of the vector field in the collection
+            param=search_params,  # Search parameters
+            limit=self.limit,  # Number of nearest neighbors to retrieve
+            output_fields=["index"]  # Fields to return in the result (like IDs or other metadata)
+        )
+        return result
 
     def make_documents(self, database):
         collection = database.collection
@@ -46,159 +85,73 @@ class VDB:
         document = Document(page_content=page_content, metadata=metadata)
         return document
 
-    def create_embed_model(self):
-        print(type(self.model_kwargs))
-        print(self.model_kwargs)
-        print(type(self.encode_kwargs))
-        print(self.encode_kwargs)
-        embed_model = HuggingFaceEmbeddings(
-            model_name=self.model_name,
-            model_kwargs=self.model_kwargs,
-            encode_kwargs=self.encode_kwargs
-        )
-        print("model created")
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
-        return embed_model
+    def make_embedding_model(self):
+        cache_folder = os.path.join(self.cache_folder, self.model_name)
+        model_kwargs = {'device': self.device}
+        encode_kwargs = {'normalize_embeddings': self.normalize_embeddings}
+        try:
+            model_kwargs['local_files_only'] = True
+            embedding_model = HuggingFaceEmbeddings(model_name=self.model_name, cache_folder=cache_folder,
+                                                    multi_process=self.multi_process, show_progress=self.show_progress,
+                                                    model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
+        except Exception as e:
+            model_kwargs['local_files_only'] = False
+            embedding_model = HuggingFaceEmbeddings(model_name=self.model_name, cache_folder=cache_folder,
+                                                    multi_process=self.multi_process, show_progress=self.show_progress,
+                                                    model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
+        return embedding_model
 
-    def embed(self, model, splitted_text):
-        for i in range(len(splitted_text)):
-            splitted_text[i].page_content = model.embed_documents([splitted_text[i].page_content])[0]
-        for i in range(len(splitted_text)):
-            temp = splitted_text[i].metadata
-            temp['page_content'] = splitted_text[i].page_content
-            splitted_text[i] = temp
-        part_list = []
-        for i in range(len(splitted_text)):
-            part_list.append(splitted_text[i])
-        print("embedded")
-        return part_list
+    def make_embedding_size(self):
+        embedding_size = self.embedding_model.client.get_sentence_embedding_dimension()
+        return embedding_size
 
-    def connect_to_docker(self):
-        connections.connect("default", host=self.milvus_host, port=self.milvus_port)
+    def make_embeddings_from_documents(self, documents):
+        texts = [doc.page_content for doc in documents]
+        embeddings = self.embedding_model.embed_documents(texts)
+        return embeddings
 
-    def update_vdb(self, embeddings):
+    def make_embedding_from_query(self, query):
+        embedding = self.embedding_model.embed_query(query)
+        return embedding
 
-        somelist = embeddings
-        # check and drop
-        if "ColAI_search" not in utility.list_collections():
-            fields = [
-                FieldSchema(name="id", dtype=DataType.VARCHAR, max_length=500, is_primary=True, auto_id=False),
-                FieldSchema(name="title", dtype=DataType.VARCHAR, max_length=500),
-                FieldSchema(name="source", dtype=DataType.VARCHAR, max_length=500),
-                FieldSchema(name="page_content", dtype=DataType.FLOAT_VECTOR, dim=384)
-            ]
-            collection_name = 'ColAI_search'
-            schema = CollectionSchema(fields, "search datasets")
-            self.milvus_collection = Collection(name=collection_name, schema=schema)
-            index = {
-                "index_type": "IVF_FLAT",
-                "metric_type": "COSINE",
-                "params": {"nlist": 1024},
-            }
-            self.milvus_collection.create_index(
-                field_name="page_content",
-                index_params=index
-            )
-            while not self.milvus_collection.has_index():
-                print("Waiting for index creation to complete...")
-                time.sleep(5)
+    def make_index(self, documents):
+        index = [document.metadata['index'] for document in documents]
+        return index
 
+    def connect_to_milvus(self):
+        connections.connect(alias=self.alias, host=self.host, port=self.port)
+        return
+
+    def make_collection(self):
+        if utility.has_collection(self.collection_name):
+            collection = Collection(name=self.collection_name)
         else:
-            self.milvus_collection = Collection(name='ColAI_search')
-        entities = [
-            [somelist['id']],  # field id
-            [somelist['title']],  # field title
-            [somelist['source']],  # field source
-            [somelist['page_content']]
-        ]
-        insert_result = self.milvus_collection.insert(entities)
+            index_field = FieldSchema(name="index", dtype=DataType.VARCHAR, max_length=64, is_primary=True,
+                                      auto_id=False)
+            vector_field = FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.embedding_size)
+            fields = [index_field, vector_field]
+            schema = CollectionSchema(fields=fields, description="Embedding collection")
+            collection = Collection(name=self.collection_name, schema=schema)
+            index_params = {"index_type": self.index_type, "metric_type": self.metric_type,
+                            "params": {"nlist": self.nlist}}
+            collection.create_index(field_name="vector", index_params=index_params)
+        return collection
 
-    def recover_vdb(self):
-        assert 'ColAI_search' in utility.list_collections()
-        self.milvus_collection = Collection(name='ColAI_search')
+    def insert(self, index, embeddings):
+        self.collection.insert([index, embeddings])
+        return
 
-    def load_collection(self):
-        self.milvus_collection.load()
-
-    def search(self, query):
-        search_params = {
-            "metric_type": "COSINE",
-            "params": {"nprobe": 10}
-        }
-
-        results = self.milvus_collection.search(
-            data=[self.model.encode([query], convert_to_tensor=True)[0].tolist()],
-            anns_field="page_content",
-            param=search_params,
-            limit=2,
-            expr=None,
-            output_fields=['title', 'id', 'source'],
-        )
-
-        ids = results[0].ids
-        print("Retrieved IDs:", ids)
-        hit = results[0][0]
-        print("Hit Title:", hit.entity.get('title'))
-
-        return ids
+    def load(self):
+        self.collection.load()
+        return
 
     def release(self):
-        self.milvus_collection.release()
+        self.collection.release()
 
+    def flush(self):
+        self.collection.flush()
+        return
 
-def main():
-    parser = argparse.ArgumentParser(description='Data Processor')
-    parser.add_argument('--config', required=True, help='Path to the YAML config file')
-    args = parser.parse_args()
-
-    # Parse the configuration from the YAML file
-    with open(args.config, 'r') as file:
-        config = yaml.safe_load(file)
-
-    # Instantiate the DataProcessor class using the parsed configuration
-    data_processor = DataProcessor(
-        milvus_host=config['connection'].get('milvus_host', 'localhost'),
-        milvus_port=config['connection'].get('milvus_port', '19530'),
-        client_url=config['database'].get('client_url', ''),
-        db_name=config['database'].get('db_name', 'Crawl-Data'),
-        collection_name=config['database'].get('collection_name', 'metadata'),
-        chunk_size=config['model'].get('chunk_size', 1024),
-        chunk_overlap=config['model'].get('chunk_overlap', 0),
-        add_start_index=config['model'].get('add_start_index', True),
-        model_name=config['model'].get('model_name', 'sentence-transformers/all-MiniLM-L6-v2'),
-        model_kwargs=config['model'].get('model_kwargs', {}),
-        encode_kwargs=config['model'].get('encode_kwargs', '{"normalize_embeddings": false}'),
-        query=config['search'].get('query', 'found this data helpf ul, a vote is appreciated'),
-        k=config['search'].get('k', 10)
-    )
-    # Use the methods as needed
-    client = pymongo.MongoClient(data_processor.client_url)
-    files = data_processor.load_data(client)
-
-    docs = []
-    for file in files[:100]:
-        docs.append(data_processor.convert_to_document(file))
-    split_text = []
-    for doc in docs:
-        res = data_processor.split_texts([doc])
-        split_text += res
-
-    embed_model = data_processor.create_embed_model()
-    embedded_data = data_processor.embed(embed_model, split_text)
-    data_processor.connect_to_docker()
-    for data in embedded_data:
-        data_processor.update_vdb(data)
-    # vdb.recover_vdb()
-
-    data_processor.load_collection()
-
-    # search
-    query = 'found this data helpful, a vote is appreciated'
-    ids = data_processor.search(query)
-
-    # release
-    data_processor.release()
-
-
-if __name__ == '__main__':
-    main()
+    def drop(self):
+        self.collection.drop()
+        return

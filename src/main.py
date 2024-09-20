@@ -18,11 +18,10 @@ def main():
     # kaggle.crawl()
     # kaggle.upload()
 
-    vdb = coldata.vdb.VDB(config['vdb']['host'], config['vdb']['port'], config['vdb']['model']['model_name'],
-                          config['vdb']['text']['chunk_size'], config['vdb']['text']['chunk_overlap'],
-                          config['vdb']['text']['add_start_index'], config['vdb']['model']['normalize_embeddings'],
-                          config['vdb']['model']['device'])
-    vdb.process(uci)
+    vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
+    vdb.update(uci)
+    index = vdb.search('best dataset')
+    print(index)
     return
 
 
