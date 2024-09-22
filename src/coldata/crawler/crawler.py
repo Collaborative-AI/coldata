@@ -27,6 +27,10 @@ class Crawler:
         """
         pass
 
+    def find(self, queries):
+        result = self.collection.find(queries)
+        return result
+
     def collection_structure(self, sample_size=100):
         schema = defaultdict(set)
         try:

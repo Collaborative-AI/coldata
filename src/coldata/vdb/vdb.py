@@ -7,7 +7,7 @@ from pymilvus import connections, utility, DataType, FieldSchema, CollectionSche
 
 class VDB:
     def __init__(self, collection_name='dataset', alias='default', host='localhost', port='19530',
-                 index_type='IVF_FLAT', metric_type='IP', nlist=1024, nprobe=1024, limit=4,
+                 index_type='IVF_FLAT', metric_type='IP', nlist=1024, nprobe=1024, limit=4, page_limit=100, renew=True,
                  chunk_size=1024, chunk_overlap=256, add_start_index=True,
                  model_name='all-mpnet-base-v2', cache_folder='output', multi_process=False, show_progress=True,
                  device='cpu', normalize_embeddings=False):
@@ -20,6 +20,8 @@ class VDB:
         self.nlist = nlist
         self.nprobe = nprobe
         self.limit = limit
+        self.page_limit = page_limit
+        self.renew = renew
 
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -49,21 +51,28 @@ class VDB:
         self.flush()
         return
 
-    ## TODO: batch queries
-    def search(self, query):
-        embedding = self.make_embedding_from_query(query)
+    def search(self, collection, queries):
+        embeddings = self.make_embedding_from_queries(queries)
         search_params = {
             "metric_type": self.metric_type,
             "params": {"nprobe": self.nprobe}
         }
-        result = self.collection.search(
-            data=[embedding],  # The query vector(s)
+        milvus_result = self.collection.search(
+            data=embeddings,  # The query vector(s)
             anns_field="vector",  # The name of the vector field in the collection
             param=search_params,  # Search parameters
             limit=self.limit,  # Number of nearest neighbors to retrieve
             output_fields=["index"]  # Fields to return in the result (like IDs or other metadata)
         )
-        return result
+        mongodb_result = []
+        for result_i in milvus_result:
+            mongodb_index = []
+            for hit in result_i:
+                mongodb_index_i = self.make_mongodb_index(hit.id)
+                mongodb_index.append(mongodb_index_i)
+            mongodb_result_i = collection.find({"index": {"$in": mongodb_index}})
+            mongodb_result.append(mongodb_result_i)
+        return mongodb_result
 
     def make_documents(self, database):
         collection = database.collection
@@ -72,7 +81,10 @@ class VDB:
         for record in records:
             document = self.record_to_document(record)
             splitted_documents = self.text_splitter.split_documents([document])
-            ## TODO: add splitted index
+            splitted_index = 0
+            for splitted_document in splitted_documents:
+                splitted_document.metadata['index'] += '_' + str(splitted_index)
+                splitted_index += 1
             documents.extend(splitted_documents)
         return documents
 
@@ -109,13 +121,17 @@ class VDB:
         embeddings = self.embedding_model.embed_documents(texts)
         return embeddings
 
-    def make_embedding_from_query(self, query):
-        embedding = self.embedding_model.embed_query(query)
+    def make_embedding_from_queries(self, queries):
+        embedding = self.embedding_model.embed_documents(queries)
         return embedding
 
     def make_index(self, documents):
         index = [document.metadata['index'] for document in documents]
         return index
+
+    def make_mongodb_index(self, index):
+        mongodb_index = index.split('_')[0]
+        return mongodb_index
 
     def connect_to_milvus(self):
         connections.connect(alias=self.alias, host=self.host, port=self.port)
@@ -124,8 +140,11 @@ class VDB:
     def make_collection(self):
         if utility.has_collection(self.collection_name):
             collection = Collection(name=self.collection_name)
+            if self.renew:
+                collection.drop()
+                collection = self.make_collection()
         else:
-            index_field = FieldSchema(name="index", dtype=DataType.VARCHAR, max_length=64, is_primary=True,
+            index_field = FieldSchema(name="index", dtype=DataType.VARCHAR, max_length=128, is_primary=True,
                                       auto_id=False)
             vector_field = FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=self.embedding_size)
             fields = [index_field, vector_field]
@@ -139,6 +158,13 @@ class VDB:
     def insert(self, index, embeddings):
         self.collection.insert([index, embeddings])
         return
+
+    def retrieve(self, epr=''):
+        results = self.collection.query(
+            expr=epr,
+            limit=self.page_limit
+        )
+        return results
 
     def load(self):
         self.collection.load()

@@ -26,6 +26,8 @@ vdb:
     nlist: 128
     nprobe: 128
     limit: 4
+    renew: False
+    page_limit: 100
   text:
     chunk_size: 1024
     chunk_overlap: 256

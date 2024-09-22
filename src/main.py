@@ -20,8 +20,10 @@ def main():
 
     vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
     vdb.update(uci)
-    index = vdb.search('best dataset')
-    print(index)
+    result = vdb.search(uci, ['best dataset'])
+    for i in range(len(result)):
+        for record in result[i]:
+            print(record)
     return
 
 
