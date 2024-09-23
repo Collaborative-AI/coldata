@@ -51,7 +51,7 @@ class VDB:
         self.flush()
         return
 
-    def search(self, collection, queries):
+    def search(self, database, queries):
         embeddings = self.make_embedding_from_queries(queries)
         search_params = {
             "metric_type": self.metric_type,
@@ -70,7 +70,7 @@ class VDB:
             for hit in result_i:
                 mongodb_index_i = self.make_mongodb_index(hit.id)
                 mongodb_index.append(mongodb_index_i)
-            mongodb_result_i = collection.find({"index": {"$in": mongodb_index}})
+            mongodb_result_i = database.collection.find({"index": {"$in": mongodb_index}})
             mongodb_result.append(mongodb_result_i)
         return mongodb_result
 

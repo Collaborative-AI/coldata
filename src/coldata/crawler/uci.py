@@ -10,9 +10,10 @@ from .crawler import Crawler
 class UCI(Crawler):
     data_name = 'UCI'
 
-    def __init__(self, key, num_attempts=None, num_datasets_per_query=1000):
-        super().__init__(self.data_name, key, num_attempts)
-        self.num_datasets_per_query = num_datasets_per_query
+    def __init__(self, database, num_attempts=None, website=None):
+        super().__init__(database)
+        self.num_attempts = num_attempts
+        self.num_datasets_per_query = website[self.data_name]['num_datasets_per_query']
         self.root_url = 'https://archive.ics.uci.edu'
 
     def make_url(self):
@@ -56,9 +57,9 @@ class UCI(Crawler):
         count = 0
         print(f'Start uploading ({self.data_name})...')
         for data in tqdm(self.data):
-            existing_data = self.collection.find_one({'index': data['index']})
+            existing_data = self.database.collection.find_one({'index': data['index']})
             if existing_data is None:
-                self.collection.insert_one(data)
+                self.database.collection.insert_one(data)
                 count += 1
         print(f'Insert {count} records.')
         return

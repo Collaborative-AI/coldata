@@ -8,11 +8,12 @@ from .crawler import Crawler
 class Kaggle(Crawler):
     data_name = 'Kaggle'
 
-    def __init__(self, key, init_page=1, num_attempts=None):
-        super().__init__(self.data_name, key, num_attempts)
+    def __init__(self, database, num_attempts=None, website=None):
+        super().__init__(database)
+        self.num_attempts = num_attempts
+        self.init_page = website[self.data_name]['init_page']
         self.json_path = os.path.join('output', 'json')
         self.tmp_metadata_filename = 'dataset-metadata.json'
-        self.init_page = init_page
 
     def crawl(self):
         attempts_count = 0
@@ -58,9 +59,9 @@ class Kaggle(Crawler):
         for json_file_name in json_file_names:
             with open(os.path.join(self.json_path, json_file_name), 'r') as file:
                 data = json.load(file)
-                existing_data = self.collection.find_one({'index': data['index']})
+                existing_data = self.database.collection.find_one({'index': data['index']})
                 if existing_data is None:
-                    self.collection.insert_one(data)
+                    self.database.collection.insert_one(data)
                     count += 1
         print(f'Insert {count} records')
         return
