@@ -1,9 +1,8 @@
 kaggle==1.6.17
-langchain==0.2.12
+langchain==0.2.14
 pandas==2.2.2
 pymilvus==2.4.4
 pymongo==4.8.0
 PyYAML==6.0.1
 requests==2.32.2
-sentence-transformers==3.0.1
 tqdm==4.66.4
