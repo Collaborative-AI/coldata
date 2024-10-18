@@ -4,7 +4,7 @@ import coldata
 
 def main():
     mode = 'local'
-    if_crawl = True
+    if_crawl = False
     config_path = 'config.yml'
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)

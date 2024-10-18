@@ -22,10 +22,9 @@ class MongoDB:
             if field not in existing_indexes:
                 self.collection.create_index([(field, pymongo.ASCENDING)], name=field)
                 print(f"Index created for {field}")
-            else:
-                print(f"Index {field} exists")
         except Exception as e:
             raise Exception(f"Failed to create index: {e}")
+        return
 
     def collection_structure(self, sample_size=100):
         schema = defaultdict(set)
