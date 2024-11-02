@@ -31,11 +31,14 @@ class UCI(Crawler):
         soup = bs(page.text, 'html.parser')
         table = pd.DataFrame(columns=['index'] + ['Title', 'Description'] +
                                      [i.text for i in soup.find_all('h1')][1:7] + ['URL'])
+        # table = pd.DataFrame(columns=['index'] + ['Title', 'Description'] +
+        #                              [i.text for i in soup.find_all('h1')][1:] + ['URL'])
         return table
 
     def crawl(self):
         url = self.make_url()
         table = self.make_table(url)
+        print(table)
         if self.num_attempts is not None:
             indices = range(self.num_attempts)
         else:
@@ -46,9 +49,10 @@ class UCI(Crawler):
             page_i = requests.get(url_i)
             soup_i = bs(page_i.text, 'html.parser')
             index_i = hashlib.sha256(url_i.encode()).hexdigest()
-            table.loc[len(table)] = [index_i] + [soup_i.find('h1').text] + \
-                                    [i.text for i in soup_i.find_all('p')][:7] + \
-                                    [self.root_url + url_i]
+            title_i = soup_i.find('h1').text
+            info_i = [i.text for i in soup_i.find_all('p')]
+            table.loc[len(table)] = [index_i] + [title_i] + info_i[:7] + [url_i]
+            # table.loc[len(table)] = [index_i] + [title_i] + info_i + [url_i]
         data = table.to_json(orient='records')
         self.data = json.loads(data)
         return self.data

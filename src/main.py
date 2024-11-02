@@ -4,7 +4,9 @@ import coldata
 
 def main():
     mode = 'local'
-    if_crawl = False
+    if_crawl = {'uci': True, 'kaggle': False}  # set to true for first run
+    if_update = False  # set to true for first run
+    if_drop = False
     config_path = 'config.yml'
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
@@ -14,6 +16,7 @@ def main():
     uci = coldata.crawler.UCI(database, **config['crawler'])
     if if_crawl:
         uci.crawl()
+        exit()
         uci.upload()
 
     kaggle = coldata.crawler.Kaggle(database, **config['crawler'])
@@ -22,11 +25,15 @@ def main():
         kaggle.upload()
 
     vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
-    vdb.update(database)
+    if if_update:
+        vdb.update(database)
     result = vdb.search(database, ['best dataset'])
     for i in range(len(result)):
         for record in result[i]:
             print(record)
+
+    if if_drop:
+        vdb.drop()
     return
 
 
