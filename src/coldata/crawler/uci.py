@@ -16,9 +16,9 @@ class UCI(Crawler):
         self.num_datasets_per_query = website[self.data_name]['num_datasets_per_query']
         self.root_url = 'https://archive.ics.uci.edu'
 
-    def make_url(self):
+    def make_url(self, num_datasets_per_query):
         url = set()
-        URL = self.root_url + f'/datasets?skip=0&take={self.num_datasets_per_query}&sort=desc&orderBy=NumHits&search='
+        URL = self.root_url + f'/datasets?skip=0&take={num_datasets_per_query}&sort=desc&orderBy=NumHits&search='
         page = requests.get(URL)
         soup = bs(page.content, 'html.parser')
         for h2 in soup.find_all('h2'):
@@ -26,35 +26,31 @@ class UCI(Crawler):
         url = list(url)
         return url
 
-    def make_table(self, url):
-        page = requests.get(self.root_url + url[0])
-        soup = bs(page.text, 'html.parser')
-        table = pd.DataFrame(columns=['index'] + ['Title', 'Description'] +
-                                     [i.text for i in soup.find_all('h1')][1:7] + ['URL'])
-        # table = pd.DataFrame(columns=['index'] + ['Title', 'Description'] +
-        #                              [i.text for i in soup.find_all('h1')][1:] + ['URL'])
-        return table
+    def parse_soup(self, url, soup):
+        feature = ['index'] + ['Title', 'Description'] + [i.text for i in soup.find_all('h1')] + ['URL']
+        index = hashlib.sha256(url.encode()).hexdigest()
+        title = soup.find('h1').text
+        info = [i.text for i in soup.find_all('p')]
+        data = [index] + [title] + info + [url]
+        data = {feature: data[i] for i, feature in enumerate(feature)}
+        return data
 
     def crawl(self):
-        url = self.make_url()
-        table = self.make_table(url)
-        print(table)
         if self.num_attempts is not None:
+            url = self.make_url(self.num_attempts)
             indices = range(self.num_attempts)
         else:
+            url = self.make_url(self.num_datasets_per_query)
             indices = range(len(list(url)))
         print(f'Start crawling ({self.data_name})...')
+        data = []
         for i in tqdm(indices):
             url_i = self.root_url + url[i]
             page_i = requests.get(url_i)
             soup_i = bs(page_i.text, 'html.parser')
-            index_i = hashlib.sha256(url_i.encode()).hexdigest()
-            title_i = soup_i.find('h1').text
-            info_i = [i.text for i in soup_i.find_all('p')]
-            table.loc[len(table)] = [index_i] + [title_i] + info_i[:7] + [url_i]
-            # table.loc[len(table)] = [index_i] + [title_i] + info_i + [url_i]
-        data = table.to_json(orient='records')
-        self.data = json.loads(data)
+            data_i = self.parse_soup(url_i, soup_i)
+            data.append(data_i)
+        self.data = data
         return self.data
 
     def upload(self):

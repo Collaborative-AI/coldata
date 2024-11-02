@@ -14,18 +14,17 @@ def main():
     database = coldata.mongodb.MongoDB(mode=mode, **config['mongodb'])
 
     uci = coldata.crawler.UCI(database, **config['crawler'])
-    if if_crawl:
+    if if_crawl['uci']:
         uci.crawl()
-        exit()
         uci.upload()
 
     kaggle = coldata.crawler.Kaggle(database, **config['crawler'])
-    if if_crawl:
+    if if_crawl['kaggle']:
         kaggle.crawl()
         kaggle.upload()
 
     vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
-    if if_update:
+    if if_update or config['vdb']['milvus']['renew']:
         vdb.update(database)
     result = vdb.search(database, ['best dataset'])
     for i in range(len(result)):
