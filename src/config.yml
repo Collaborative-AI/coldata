@@ -1,10 +1,11 @@
 crawler:
-  num_attempts: 1
   website:
     UCI:
       num_datasets_per_query: 1000
+      num_attempts: null
     Kaggle:
       init_page: 1
+      num_attempts: 0
 mongodb:
   key:
     local:

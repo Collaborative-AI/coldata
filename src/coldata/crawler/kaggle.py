@@ -8,14 +8,15 @@ from .crawler import Crawler
 class Kaggle(Crawler):
     data_name = 'Kaggle'
 
-    def __init__(self, database, num_attempts=None, website=None):
+    def __init__(self, database, website=None):
         super().__init__(database)
-        self.num_attempts = num_attempts
+        self.num_attempts = website[self.data_name]['num_attempts']
         self.init_page = website[self.data_name]['init_page']
         self.json_path = os.path.join('output', 'json')
         self.tmp_metadata_filename = 'dataset-metadata.json'
 
     def crawl(self):
+        self.attempts_check()
         attempts_count = 0
         api = kaggle.KaggleApi()
         api.authenticate()
@@ -53,6 +54,7 @@ class Kaggle(Crawler):
         return
 
     def upload(self):
+        self.attempts_check()
         count = 0
         print(f'Start uploading ({self.data_name})...')
         json_file_names = os.listdir(self.json_path)

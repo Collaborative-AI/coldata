@@ -4,7 +4,6 @@ import coldata
 
 def main():
     mode = 'local'
-    if_crawl = {'uci': True, 'kaggle': False}  # set to true for first run
     if_update = False  # set to true for first run
     if_drop = False
     config_path = 'config.yml'
@@ -14,14 +13,12 @@ def main():
     database = coldata.mongodb.MongoDB(mode=mode, **config['mongodb'])
 
     uci = coldata.crawler.UCI(database, **config['crawler'])
-    if if_crawl['uci']:
-        uci.crawl()
-        uci.upload()
+    uci.crawl()
+    uci.upload()
 
     kaggle = coldata.crawler.Kaggle(database, **config['crawler'])
-    if if_crawl['kaggle']:
-        kaggle.crawl()
-        kaggle.upload()
+    kaggle.crawl()
+    kaggle.upload()
 
     vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
     if if_update or config['vdb']['milvus']['renew']:

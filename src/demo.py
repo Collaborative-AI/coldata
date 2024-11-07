@@ -31,7 +31,7 @@ def main():
 
     # Initialize Milvus vector database (vdb)
     vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
-    vdb.update(database)  ## TODO: resume?
+    # vdb.update(database)
 
     # Gradio UI function
     def gradio_search_interface(search_term):
