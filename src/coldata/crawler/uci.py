@@ -1,19 +1,26 @@
 import hashlib
+import os
 import requests
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
 from .crawler import Crawler
 from .utils import clean_text, join_content
+from ..utils import save, load
 
 
 class UCI(Crawler):
     data_name = 'UCI'
 
     def __init__(self, database, website=None):
-        super().__init__(database)
-        self.num_attempts = website[self.data_name]['num_attempts']
+        super().__init__(self.data_name, database, website)
         self.num_datasets_per_query = website[self.data_name]['num_datasets_per_query']
         self.root_url = 'https://archive.ics.uci.edu'
+        if self.use_cache and os.path.exists(os.path.join(self.cache_dir, 'url')):
+            self.url = load(os.path.join(self.cache_dir, 'url'))
+        else:
+            self.url = self.make_url(self.num_datasets_per_query)
+            save(self.url, os.path.join(self.cache_dir, 'url'))
+        self.num_datasets = len(self.url)
 
     def make_url(self, num_datasets_per_query):
         url = set()
@@ -23,7 +30,7 @@ class UCI(Crawler):
         soup = bs(response.content, 'html.parser')
         for h2 in soup.find_all('h2'):
             url.add(h2.find('a')['href'])
-        url = list(url)
+        url = sorted(list(url), key=lambda x: x.split('/')[-1])
         return url
 
     def make_data(self, url, soup):
@@ -79,10 +86,12 @@ class UCI(Crawler):
     def crawl(self):
         self.attempts_check()
         if self.num_attempts is not None:
-            url = self.make_url(self.num_attempts)
+            # url = self.make_url(self.num_attempts)
+            url = self.url[:self.num_attempts]
             indices = range(self.num_attempts)
         else:
-            url = self.make_url(self.num_datasets_per_query)
+            # url = self.make_url(self.num_datasets_per_query)
+            url = self.url
             indices = range(len(list(url)))
         print(f'Start crawling ({self.data_name})...')
         data = []

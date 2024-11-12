@@ -1,11 +1,13 @@
 crawler:
   website:
     UCI:
-      num_datasets_per_query: 1000
       num_attempts: null
+      use_cache: True
+      num_datasets_per_query: 1000
     Kaggle:
-      init_page: 1
       num_attempts: 0
+      use_cache: True
+      init_page: 1
 mongodb:
   key:
     local:
