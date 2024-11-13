@@ -19,3 +19,7 @@ elif [ "$ACTION" == "stop" ]; then
 else
     echo "Invalid command. Use './manage_milvus.sh start' or './manage_milvus.sh stop'"
 fi
+
+# If on windows port is occupied
+# net stop winnat
+# net start winnat

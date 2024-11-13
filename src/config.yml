@@ -1,12 +1,12 @@
 crawler:
   website:
     UCI:
-      num_attempts: null
+      num_attempts: 1
       use_cache: True
       num_datasets_per_query: 1000
     Kaggle:
-      num_attempts: 0
-      use_cache: True
+      num_attempts: 1
+      use_cache: False
       init_page: 1
 mongodb:
   key:

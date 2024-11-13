@@ -28,5 +28,5 @@ class Crawler:
         pass
 
     def attempts_check(self):
-        if self.num_attempts is not None or (isinstance(self.num_attempts, int) and self.num_attempts <= 0):
-            return
+        return self.num_attempts is None or (isinstance(self.num_attempts, int) and self.num_attempts > 0)
+

@@ -15,23 +15,25 @@ class UCI(Crawler):
         super().__init__(self.data_name, database, website)
         self.num_datasets_per_query = website[self.data_name]['num_datasets_per_query']
         self.root_url = 'https://archive.ics.uci.edu'
-        if self.use_cache and os.path.exists(os.path.join(self.cache_dir, 'url')):
-            self.url = load(os.path.join(self.cache_dir, 'url'))
-        else:
-            self.url = self.make_url(self.num_datasets_per_query)
-            save(self.url, os.path.join(self.cache_dir, 'url'))
-        self.num_datasets = len(self.url)
+        self.datasets = self.make_datasets()
+        self.num_datasets = len(self.datasets)
 
-    def make_url(self, num_datasets_per_query):
-        url = set()
-        URL = self.root_url + f'/datasets?skip=0&take={num_datasets_per_query}&sort=desc&orderBy=NumHits&search='
+    def make_datasets(self):
+        if self.use_cache and os.path.exists(os.path.join(self.cache_dir, 'datasets')):
+            datasets = load(os.path.join(self.cache_dir, 'datasets'))
+            return datasets
+
+        datasets = set()
+        URL = self.root_url + f'/datasets?skip=0&take={self.num_datasets_per_query}&sort=desc&orderBy=NumHits&search='
         response = requests.get(URL)
         response.encoding = 'utf-8'
         soup = bs(response.content, 'html.parser')
         for h2 in soup.find_all('h2'):
-            url.add(h2.find('a')['href'])
-        url = sorted(list(url), key=lambda x: x.split('/')[-1])
-        return url
+            datasets.add(h2.find('a')['href'])
+        datasets = sorted(list(datasets), key=lambda x: x.split('/')[-1])
+
+        save(datasets, os.path.join(self.cache_dir, 'datasets'))
+        return datasets
 
     def make_data(self, url, soup):
         index = hashlib.sha256(url.encode()).hexdigest()
@@ -84,19 +86,18 @@ class UCI(Crawler):
         return parsed
 
     def crawl(self):
-        self.attempts_check()
+        if not self.attempts_check():
+            return
         if self.num_attempts is not None:
-            # url = self.make_url(self.num_attempts)
-            url = self.url[:self.num_attempts]
+            datasets = self.datasets[:self.num_attempts]
             indices = range(self.num_attempts)
         else:
-            # url = self.make_url(self.num_datasets_per_query)
-            url = self.url
-            indices = range(len(list(url)))
+            datasets = self.datasets
+            indices = range(len(list(datasets)))
         print(f'Start crawling ({self.data_name})...')
         data = []
         for i in tqdm(indices):
-            url_i = self.root_url + url[i]
+            url_i = self.root_url + datasets[i]
             page_i = requests.get(url_i)
             soup_i = bs(page_i.text, 'html.parser')
             data_i = self.make_data(url_i, soup_i)
@@ -105,7 +106,8 @@ class UCI(Crawler):
         return self.data
 
     def upload(self):
-        self.attempts_check()
+        if not self.attempts_check():
+            return
         count = 0
         print(f'Start uploading ({self.data_name})...')
         for data in tqdm(self.data):
