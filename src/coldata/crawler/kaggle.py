@@ -37,6 +37,36 @@ class Kaggle(Crawler):
         save(datasets, os.path.join(self.cache_dir, 'datasets'))
         return datasets
 
+    def make_data(self, metadata):
+        data = {
+            "id": metadata.get("id", ""),
+            "title": metadata.get("title", ""),
+            "subtitle": metadata.get("subtitle", ""),
+            "description": metadata.get("description", ""),
+            "owner": metadata.get("ownerUser", ""),
+            "datasetSlug": metadata.get("datasetSlug", ""),
+            "usabilityRating": metadata.get("usabilityRating", ""),
+            "totalViews": metadata.get("totalViews", 0),
+            "totalVotes": metadata.get("totalVotes", 0),
+            "totalDownloads": metadata.get("totalDownloads", 0),
+            "isPrivate": metadata.get("isPrivate", False),
+            "keywords": metadata.get("keywords", []),
+            "licenses": [license_info.get("name", "") for license_info in metadata.get("licenses", [])],
+            "ref": metadata.get("ref", ""),
+            "index": metadata.get("index", ""),
+            "URL": metadata.get("URL", ""),
+        }
+
+        # Clean up the description (e.g., remove markdown links)
+        data["description"] = (
+            data["description"]
+            .replace("![image](", "")
+            .replace(")", "")
+            if data["description"]
+            else ""
+        )
+        return data
+
     def crawl(self):
         if not self.attempts_check():
             return
@@ -51,13 +81,14 @@ class Kaggle(Crawler):
             index = hashlib.sha256(dataset.url.encode()).hexdigest()
             makedir_exist_ok(os.path.join(self.cache_dir, 'json'))
             data_path = os.path.join(self.cache_dir, 'json', '{}.json'.format(index))
-            if not os.path.exists(data_path):
+            if not (self.use_cache and os.path.exists(data_path)):
                 self.api.dataset_metadata(dataset.ref, path=self.cache_dir)
                 with open(os.path.join(self.cache_dir, self.tmp_metadata_filename), 'r') as file:
                     data = json.load(file)
-                    data['index'] = index
                     data['ref'] = dataset.ref
+                    data['index'] = index
                     data['URL'] = dataset.url
+                data = self.make_data(data)
                 with open(data_path, 'w') as file:
                     json.dump(data, file)
                 os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))

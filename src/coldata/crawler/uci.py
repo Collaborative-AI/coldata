@@ -40,10 +40,8 @@ class UCI(Crawler):
         data = {}
         data['index'] = index
         data['URL'] = url
-        data = self.parse_soup(soup, data)
-        return data
+        # data = self.parse_soup(soup, data)
 
-    def parse_soup(self, soup, parsed):
         # Find all headers and paragraphs in the order they appear
         elements = soup.find_all(['h1', 'p', 'a', 'footer'])
         cookie_keywords = ["cookie", "privacy", "consent", "policy"]
@@ -60,11 +58,11 @@ class UCI(Crawler):
                 if current_group['header'] is not None:
                     if len(current_group['content']) > 0:
                         if if_first:
-                            parsed['Title'] = clean_text(current_group['header'])
-                            parsed['Description'] = join_content(current_group['content'])
+                            data['Title'] = clean_text(current_group['header'])
+                            data['Description'] = join_content(current_group['content'])
                             if_first = False
                         else:
-                            parsed[current_group['header']] = join_content(current_group['content'])
+                            data[current_group['header']] = join_content(current_group['content'])
                 header = element.get_text()
                 current_group = {'header': header, 'content': []}
             elif element.name in ['p', 'a']:  # If it's a paragraph or a link
@@ -79,11 +77,12 @@ class UCI(Crawler):
         if current_group['header'] is not None:
             if len(current_group['content']) > 0:
                 if if_first:
-                    parsed['Title'] = clean_text(current_group['header'])
-                    parsed['Description'] = join_content(current_group['content'])
+                    data['Title'] = clean_text(current_group['header'])
+                    data['Description'] = join_content(current_group['content'])
                 else:
-                    parsed[current_group['header']] = join_content(current_group['content'])
-        return parsed
+                    data[current_group['header']] = join_content(current_group['content'])
+
+        return data
 
     def crawl(self):
         if not self.attempts_check():
