@@ -1,7 +1,7 @@
 crawler:
   website:
     UCI:
-      num_attempts: 0
+      num_attempts: 1
       use_cache: True
       num_datasets_per_query: 1000
     Kaggle:
@@ -29,7 +29,7 @@ vdb:
     nlist: 128
     nprobe: 128
     limit: 4
-    renew: True
+    renew: False
     page_limit: 100
   text:
     chunk_size: 1024

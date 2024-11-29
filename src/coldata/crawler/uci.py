@@ -40,7 +40,6 @@ class UCI(Crawler):
         data = {}
         data['index'] = index
         data['URL'] = url
-        # data = self.parse_soup(soup, data)
 
         # Find all headers and paragraphs in the order they appear
         elements = soup.find_all(['h1', 'p', 'a', 'footer'])
@@ -58,8 +57,8 @@ class UCI(Crawler):
                 if current_group['header'] is not None:
                     if len(current_group['content']) > 0:
                         if if_first:
-                            data['Title'] = clean_text(current_group['header'])
-                            data['Description'] = join_content(current_group['content'])
+                            data['title'] = clean_text(current_group['header'])
+                            data['description'] = join_content(current_group['content'])
                             if_first = False
                         else:
                             data[current_group['header']] = join_content(current_group['content'])
@@ -77,8 +76,8 @@ class UCI(Crawler):
         if current_group['header'] is not None:
             if len(current_group['content']) > 0:
                 if if_first:
-                    data['Title'] = clean_text(current_group['header'])
-                    data['Description'] = join_content(current_group['content'])
+                    data['title'] = clean_text(current_group['header'])
+                    data['description'] = join_content(current_group['content'])
                 else:
                     data[current_group['header']] = join_content(current_group['content'])
 

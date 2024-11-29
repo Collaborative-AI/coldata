@@ -4,7 +4,7 @@ import coldata
 
 def main():
     mode = 'local'
-    if_update = False  # set to true for first run
+    if_update = False  # set to true for first run when vdb was renewed
     if_drop = False
     config_path = 'config.yml'
     with open(config_path, 'r') as file:

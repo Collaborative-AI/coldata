@@ -52,7 +52,6 @@ class Kaggle(Crawler):
             "isPrivate": metadata.get("isPrivate", False),
             "keywords": metadata.get("keywords", []),
             "licenses": [license_info.get("name", "") for license_info in metadata.get("licenses", [])],
-            "ref": metadata.get("ref", ""),
             "index": metadata.get("index", ""),
             "URL": metadata.get("URL", ""),
         }
@@ -85,7 +84,6 @@ class Kaggle(Crawler):
                 self.api.dataset_metadata(dataset.ref, path=self.cache_dir)
                 with open(os.path.join(self.cache_dir, self.tmp_metadata_filename), 'r') as file:
                     data = json.load(file)
-                    data['ref'] = dataset.ref
                     data['index'] = index
                     data['URL'] = dataset.url
                 data = self.make_data(data)
