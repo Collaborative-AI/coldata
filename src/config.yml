@@ -8,6 +8,10 @@ crawler:
       num_attempts: 1
       use_cache: True
       init_page: 1
+    AWS:
+      num_attempts: 1
+      use_cache: True
+      num_datasets_per_query: 1000
 mongodb:
   key:
     local:
