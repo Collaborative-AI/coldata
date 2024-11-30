@@ -19,7 +19,11 @@ def main():
     kaggle = coldata.crawler.Kaggle(database, **config['crawler'])
     kaggle.crawl()
     kaggle.upload()
-
+    '''
+    aws = coldata.crawler.AWS(database, **config['crawler'])
+    aws.crawl()
+    aws.upload()
+    '''
     vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
     if if_update or config['vdb']['milvus']['renew']:
         vdb.update(database)
