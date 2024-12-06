@@ -4,12 +4,16 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
+from .crawler import Crawler
+from .utils import clean_text, join_content
+from ..utils import save, load
 
 
-class AWS():
+class AWS(Crawler):
     data_name = 'AWS'
 
-    def __init__(self, num_attempts=None, website=None):
+    def __init__(self, database, website=None):
+        super().__init__(self.data_name, database, website)
         self.num_attempts = num_attempts
         self.root_url = 'https://registry.opendata.aws'
 
@@ -23,36 +27,69 @@ class AWS():
         url = list(url)
         return url
 
-    def make_table(self, url):
-        page = requests.get(self.root_url + url[0])
-        soup = bs(page.text, 'html.parser')
-        table = pd.DataFrame(columns=['index'] + ['Title', 'Description', 'label'] +
-                                     [i.text for i in soup.find_all('h4')][:7] + ['URL'])
-        return table
+    def make_data(self, url, soup):
+        index = hashlib.sha256(url.encode()).hexdigest()
+        data = {}
+        data['index'] = index
+        data['URL'] = url
+        data = self.parse_soup(soup, data)
+        return data
 
+    def parse_soup(self, soup_i, parsed):
+        elements = soup_i.find_all(['h1', 'p', 'a', 'h4', 'h5', 'h3'])
+
+        # Initialize variables for storing results
+        current_group = {'header': None, 'content': []}
+        footer = False
+        if_first = True
+        # Iterate through each element
+        for element in elements:
+            if element.name == 'h1' or element.name =='h4':  # If it's a header
+                if current_group['header'] is not None:
+                    if len(current_group['content']) > 0:
+                        if if_first:
+                            parsed['Title'] = clean_text(current_group['header'])
+                            parsed['Labels'] = current_group['content'][0].strip().replace('\n', ',')
+                            parsed['Description'] = current_group['content'][1]
+                            if_first = False
+                        else:
+                            parsed[current_group['header']] = join_content(current_group['content'])
+                header = element.get_text()
+                current_group = {'header': header, 'content': []}
+            elif element.name in ['p', 'a', 'h5']:  # If it's a paragraph or a link
+                content = element.get_text()
+
+                current_group['content'].append(content)
+            else:
+                if footer:
+                    break
+                footer = True
+        if current_group['header'] is not None:
+            if len(current_group['content']) > 0:
+                if if_first:
+                    parsed['Title'] = clean_text(current_group['header'])
+                    parsed['Labels'] = current_group['content'][0].strip().replace('\n', ',')
+                    parsed['Description'] = current_group['content'][1]
+                else:
+                    parsed[current_group['header']] = join_content(current_group['content'])
+        return parsed
+        
     def crawl(self):
         url = self.make_url()
-        table = self.make_table(url)
         if self.num_attempts is not None:
             indices = range(self.num_attempts)
         else:
             indices = range(len(list(url)))
+        data = []
         print(f'Start crawling ({self.data_name})...')
         for i in tqdm(indices):
             url_i = self.root_url + url[i]
             page_i = requests.get(url_i)
             soup_i = bs(page_i.text, 'html.parser')
-            index_i = hashlib.sha256(url_i.encode()).hexdigest()
-            table.loc[len(table)] = [index_i] + [soup_i.find('h1').text] + \
-                                    [soup_i.find('div', class_='col-md-6').find('p').text] + \
-                                    [''.join([i.text for i in soup_i.find_all('span', class_='label-info')])] + \
-                                    [i.text for i in soup_i.find('div', class_='col-md-6').find_all('p')][1:4] + \
-                                    [i.text for i in soup_i.find('div', class_='col-md-6').find_all('p')][-3:] + \
-                                    [dict(zip([i.text for i in soup_i.find_all('h5')][:2], [i.text for i in soup_i.find_all('ul', class_ = "dataatwork-list")][:2]))] + \
-                                    [url_i]
-        print(table.head())
-        data = table.to_json(orient='records')
-        self.data = json.loads(data)
+            data_i = self.make_data(url_i, soup_i)
+            data.append(data_i)
+        print(data)
+        self.data = data
         return self.data
 
     def upload(self):
