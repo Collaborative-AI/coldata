@@ -8,11 +8,12 @@ filtered_keys = ['_id', 'index']
 
 
 # Function to filter out unwanted keys
-def filter_result(results):
+def filter_result(result):
     filtered_results = []
-    for record in results:
+    for index in result:
         # Ensure each record is treated as a dictionary and filter out unwanted keys
-        filtered_record = {key: value for key, value in record.items() if key not in filtered_keys}
+        filtered_record = {key: value for key, value in result[index]['record'].items() if key not in filtered_keys}
+        filtered_record['distance'] = result[index]['distance']
         filtered_results.append(filtered_record)
     return filtered_results
 

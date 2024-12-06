@@ -3,6 +3,7 @@ from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
+from collections import OrderedDict
 
 
 class VDB:
@@ -17,6 +18,7 @@ class VDB:
         self.port = port
         self.index_type = index_type
         self.metric_type = metric_type
+        self.similarity_order = self.make_similarity_order()
         self.nlist = nlist
         self.nprobe = nprobe
         self.limit = limit
@@ -64,15 +66,26 @@ class VDB:
             limit=self.limit,  # Number of nearest neighbors to retrieve
             output_fields=["index"]  # Fields to return in the result (like IDs or other metadata)
         )
-        mongodb_result = []
-        for result_i in milvus_result:
-            mongodb_index = []
-            for hit in result_i:
-                mongodb_index_i = self.make_mongodb_index(hit.id)
-                mongodb_index.append(mongodb_index_i)
-            mongodb_result_i = database.collection.find({"index": {"$in": mongodb_index}})
-            mongodb_result.append(mongodb_result_i)
-        return mongodb_result
+        result = []
+        for milvus_result_i in milvus_result:
+            result_i = {}
+            for hit in milvus_result_i:
+                # print(hit)
+                mongodb_index = self.make_mongodb_index(hit.id)
+                if mongodb_index in result_i:
+                    if self.check_similarity_order(hit.distance, result_i[mongodb_index]['distance']):
+                        result_i[mongodb_index]['distance'] = hit.distance
+                else:
+                    result_i[mongodb_index] = {'distance': hit.distance}
+            result_i = OrderedDict(sorted(result_i.items(), key=lambda item: item[1]['distance'],
+                                          reverse=self.similarity_order == 'greater'))
+            indices_i = list(result_i.keys())
+            mongodb_result_i = database.collection.find({"index": {"$in": indices_i}})
+            for j, record in enumerate(mongodb_result_i):
+                index = indices_i[j]
+                result_i[index]['record'] = record
+            result.append(result_i)
+        return result
 
     def make_documents(self, database):
         collection = database.collection
@@ -111,6 +124,19 @@ class VDB:
                                                     multi_process=self.multi_process, show_progress=self.show_progress,
                                                     model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
         return embedding_model
+
+    def make_similarity_order(self):
+        if self.metric_type in ['IP', 'COSINE']:
+            order = 'greater'
+        else:
+            order = 'smaller'
+        return order
+
+    def check_similarity_order(self, similarity_0, similarity_1):
+        if self.similarity_order == 'greater':
+            return similarity_0 > similarity_1
+        else:
+            return similarity_0 <= similarity_1
 
     def make_embedding_size(self):
         embedding_size = self.embedding_model.client.get_sentence_embedding_dimension()

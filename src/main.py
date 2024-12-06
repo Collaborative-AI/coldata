@@ -23,10 +23,11 @@ def main():
     vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
     if if_update or config['vdb']['milvus']['renew']:
         vdb.update(database)
-    result = vdb.search(database, ['best dataset'])
+    result = vdb.search(database, ['student'])
     for i in range(len(result)):
-        for record in result[i]:
-            print(record)
+        for index in result[i]:
+            print(result[i][index]['distance'])
+            print(result[i][index]['record'])
 
     if if_drop:
         vdb.drop()
