@@ -9,7 +9,7 @@ crawler:
       use_cache: True
       init_page: 1
     AWS:
-      num_attempts: 1
+      num_attempts: 
       use_cache: True
       num_datasets_per_query: 1000
 mongodb:

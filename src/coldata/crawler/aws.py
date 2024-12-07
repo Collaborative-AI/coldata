@@ -1,5 +1,6 @@
 import json
 import hashlib
+import os
 import requests
 import pandas as pd
 from bs4 import BeautifulSoup as bs
@@ -14,17 +15,25 @@ class AWS(Crawler):
 
     def __init__(self, database, website=None):
         super().__init__(self.data_name, database, website)
-        self.num_attempts = num_attempts
+        self.num_datasets_per_query = website[self.data_name]['num_datasets_per_query']
         self.root_url = 'https://registry.opendata.aws'
+        self.datasets = self.make_datasets()
+        self.num_datasets = len(self.datasets)
 
-    def make_url(self):
+    def make_datasets(self):
+        if self.use_cache and os.path.exists(os.path.join(self.cache_dir, 'datasets')):
+            datasets = load(os.path.join(self.cache_dir, 'datasets'))
+            return datasets
+        
         url = set()
         page = requests.get(self.root_url)
+        page.encoding = 'utf-8'
         soup = bs(page.content, 'html.parser')
         datasets = soup.find_all('div', class_='dataset')
         for dataset in tqdm(datasets):
             url.add(dataset.find('a')['href'])
         url = list(url)
+        save(url, os.path.join(self.cache_dir, 'datasets'))
         return url
 
     def make_data(self, url, soup):
@@ -75,20 +84,24 @@ class AWS(Crawler):
         return parsed
         
     def crawl(self):
-        url = self.make_url()
+        if not self.attempts_check():
+            return
         if self.num_attempts is not None:
+            print("here")
+            datasets = self.datasets[:self.num_attempts]
             indices = range(self.num_attempts)
         else:
-            indices = range(len(list(url)))
+            print("here")
+            datasets = self.datasets
+            indices = range(len(list(datasets)))
         data = []
         print(f'Start crawling ({self.data_name})...')
         for i in tqdm(indices):
-            url_i = self.root_url + url[i]
+            url_i = self.root_url + datasets[i]
             page_i = requests.get(url_i)
             soup_i = bs(page_i.text, 'html.parser')
             data_i = self.make_data(url_i, soup_i)
             data.append(data_i)
-        print(data)
         self.data = data
         return self.data
 
