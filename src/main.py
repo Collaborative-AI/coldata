@@ -27,7 +27,7 @@ def main():
     vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
     if if_update or config['vdb']['milvus']['renew']:
         vdb.update(database)
-    result = vdb.search(database, ['student'])
+    result = vdb.search(database, ['181 early modern English plays'])
     for i in range(len(result)):
         for index in result[i]:
             print(result[i][index]['distance'])

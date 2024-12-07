@@ -70,7 +70,6 @@ class VDB:
         for milvus_result_i in milvus_result:
             result_i = {}
             for hit in milvus_result_i:
-                # print(hit)
                 mongodb_index = self.make_mongodb_index(hit.id)
                 if mongodb_index in result_i:
                     if self.check_similarity_order(hit.distance, result_i[mongodb_index]['distance']):
