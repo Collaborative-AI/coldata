@@ -4,7 +4,7 @@ import coldata
 
 def main():
     mode = 'local'
-    if_update = False  # set to true for first run when vdb was renewed
+    if_update = False  # set to true for first run when vdb was renewed or new documents inserted in mongodb
     if_drop = False
     config_path = 'config.yml'
     with open(config_path, 'r') as file:
@@ -19,15 +19,15 @@ def main():
     kaggle = coldata.crawler.Kaggle(database, **config['crawler'])
     kaggle.crawl()
     kaggle.upload()
-    '''
+
     aws = coldata.crawler.AWS(database, **config['crawler'])
     aws.crawl()
     aws.upload()
-    '''
+
     vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
     if if_update or config['vdb']['milvus']['renew']:
         vdb.update(database)
-    result = vdb.search(database, ['181 early modern English plays'])
+    result = vdb.search(database, ['Satellite Computed Bathymetry Assessment-SCuBA'])
     for i in range(len(result)):
         for index in result[i]:
             print(result[i][index]['distance'])
