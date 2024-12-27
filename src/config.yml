@@ -45,3 +45,6 @@ vdb:
     show_progress: True
     device: cpu
     normalize_embeddings: False
+scheduler:
+  init_run: True
+  period: day
