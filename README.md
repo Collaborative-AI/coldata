@@ -2,7 +2,7 @@
 _Dataset Search Engine with Vector Database_
 
 **coldata** is an open-source dataset search engine designed to help researchers, data scientists, and developers quickly find relevant datasets across a variety of sources.  
-The engine crawls metadata from popular dataset hosting platforms with **Beautiful Soup**, stores it in **MongoDB**, and transforms it into a vector-based database using **MilvuDB** for enhanced search and retrieval.
+The engine crawls metadata from popular dataset hosting platforms with **BeautifulSoup**, stores it in **MongoDB**, and transforms it into a vector-based database using **MilvuDB** for enhanced search and retrieval.
 
 
 ## Features
