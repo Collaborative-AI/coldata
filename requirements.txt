@@ -1,8 +1,11 @@
+gradio==5.1.0
 kaggle==1.6.17
 langchain==0.2.14
-pandas==2.2.2
+numpy==1.26.4
 pymilvus==2.4.4
 pymongo==4.8.0
 PyYAML==6.0.1
 requests==2.32.2
+schedule==1.2.2
+torch==2.5.1+cu124
 tqdm==4.66.4
