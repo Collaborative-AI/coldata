@@ -17,7 +17,7 @@ mongodb:
       string: mongodb://localhost:27017
       db_name: coldata
     remote:
-      string: mongodb+srv://diaoenmao:ColAI2023@crawl-data.5blrkb2.mongodb.net/?retryWrites=true&w=majority&appName=Crawl-Data
+      string: null
       db_name: Crawl-Data
   collection_name: dataset
   index_field: index
