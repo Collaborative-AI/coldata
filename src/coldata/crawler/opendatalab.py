@@ -1,30 +1,36 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
 import time
 import hashlib
 import os
 import requests
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from .crawler import Crawler
 from .utils import clean_text, join_content
-from ..utils import save, load
+from ..utils import save, load # add cache if exists
 
 
-class OpenDataLab:
-    def __init__(self, root_url="https://opendatalab.com", driver_path="/Users/tiffanymacair/Desktop/chromedriver-mac-arm64/chromedriver"):
+class OpenDataLab(Crawler):
+    data_name = 'OpenDataLab'
+
+    # TODO: change to config
+    # TODO: change the path using os.path
+    def __init__(self, database, website=None, root_url="https://opendatalab.com",
+                 driver_path="/Users/tiffanymacair/Desktop/chromedriver-mac-arm64/chromedriver"):
+        super().__init__(self.data_name, database, website)
         self.root_url = root_url
         self.driver_path = driver_path
         self.driver = self._initialize_driver()
 
     def _initialize_driver(self):
         options = Options()
-        options.add_argument('--headless')  
+        options.add_argument('--headless')
         options.add_argument('--disable-gpu')
         service = Service(self.driver_path)
         return webdriver.Chrome(service=service, options=options)
-    
+
     def make_datasets(self, page_no=1, page_size=12):
         datasets = set()
         url = f"{self.root_url}/?pageNo={page_no}&pageSize={page_size}&sort=all"
@@ -33,7 +39,7 @@ class OpenDataLab:
         soup = bs(self.driver.page_source, 'html.parser')
 
         # Extract dataset links
-        cards = soup.find_all('a', class_='_cardContainer_1vhh8_1')  
+        cards = soup.find_all('a', class_='_cardContainer_1vhh8_1')
         for card in cards:
             href = card.get('href')
             if href:
@@ -50,16 +56,16 @@ class OpenDataLab:
         data['index'] = index
         data['URL'] = url
 
-        elements = soup.find_all(['h1', 'h2', 'h3', 'h4','h5', 'p', 'li', 'a'])
+        elements = soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'p', 'li', 'a'])
         cookie_keywords = ["cookie", "privacy", "consent", "policy"]
-        footer_keywords = ["© 2022 OpenDatalab. All Rights Reserved.", "沪ICP备2021009351号-5","Similar Datasets"]
+        footer_keywords = ["© 2022 OpenDatalab. All Rights Reserved.", "沪ICP备2021009351号-5", "Similar Datasets"]
 
         # Initialize variables for storing results
         current_group = {'header': None, 'content': []}
         if_first = True
-        
+
         for element in elements:
-            if element.name in ['h1', 'h2', 'h3', 'h4','h5']:
+            if element.name in ['h1', 'h2', 'h3', 'h4', 'h5']:
                 if current_group['header'] is not None:
                     if len(current_group['content']) > 0:
                         if if_first:
@@ -74,7 +80,7 @@ class OpenDataLab:
                 content = element.get_text()
                 # Check for cookie consent keywords and skip if found
                 if any(keyword.lower() in content.lower() for keyword in cookie_keywords + footer_keywords):
-                    continue  
+                    continue
                 current_group['content'].append(content)
 
         if current_group['header'] is not None:
@@ -86,7 +92,7 @@ class OpenDataLab:
                     data[current_group['header']] = join_content(current_group['content'])
         return data
 
-    def crawl(self):
+    def crawl(self):  # TODO: this does not used, needs refactor
         if not self.attempts_check():
             return
         if self.num_attempts is not None:
@@ -119,6 +125,7 @@ class OpenDataLab:
         print(f'Insert {count} records.')
         return
 
+# TODO use main.py to test
 '''
 Test main class:
 if __name__ == "__main__":
