@@ -9,9 +9,10 @@ def main():
     config_path = 'config.yml'
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
-
     database = coldata.mongodb.MongoDB(mode=mode, **config['mongodb'])
 
+    print(config['crawler'])
+    '''
     uci = coldata.crawler.UCI(database, **config['crawler'])
     uci.crawl()
     uci.upload()
@@ -36,6 +37,10 @@ def main():
     if if_drop:
         vdb.drop()
     return
+    '''
+    pwc = coldata.crawler.PapersWithCode(database, **config['crawler'])
+    pwc.crawl()
+    pwc.upload()
 
 
 if __name__ == '__main__':
