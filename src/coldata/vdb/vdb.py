@@ -48,9 +48,12 @@ class VDB:
     def update(self, database):
         documents = self.make_documents(database)
         embeddings = self.make_embeddings_from_documents(documents)
-        index = self.make_index(documents)
-        self.insert(index, embeddings)
-        self.flush()
+        if embeddings is not None:
+            index = self.make_index(documents)
+            self.insert(index, embeddings)
+            self.flush()
+        else:
+            raise ValueError('No embeddings')
         return
 
     def search(self, database, queries):
@@ -81,9 +84,11 @@ class VDB:
             indices_i = list(result_i.keys())
             mongodb_result_i = database.collection.find({"index": {"$in": indices_i}})
             for j, record in enumerate(mongodb_result_i):
+                print(record)
                 index = indices_i[j]
                 result_i[index]['record'] = record
-            result.append(result_i)
+            if 'record' in result:
+                result.append(result_i)
         return result
 
     def make_documents(self, database):
@@ -143,7 +148,10 @@ class VDB:
 
     def make_embeddings_from_documents(self, documents):
         texts = [doc.page_content for doc in documents]
-        embeddings = self.embedding_model.embed_documents(texts)
+        if len(texts) > 0:
+            embeddings = self.embedding_model.embed_documents(texts)
+        else:
+            embeddings = None
         return embeddings
 
     def make_embedding_from_queries(self, queries):
@@ -181,6 +189,7 @@ class VDB:
         return collection
 
     def insert(self, index, embeddings):
+        # TODO: has to insert one by one
         self.collection.insert([index, embeddings])
         return
 

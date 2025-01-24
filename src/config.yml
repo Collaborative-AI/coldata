@@ -9,7 +9,7 @@ crawler:
       use_cache: True
       init_page: 1
     AWS:
-      num_attempts: 1
+      num_attempts: 0
       use_cache: True
 mongodb:
   key:
