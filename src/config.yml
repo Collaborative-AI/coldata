@@ -1,17 +1,16 @@
 crawler:
   website:
     UCI:
-      num_attempts: 1
+      num_attempts: 0
       use_cache: True
       num_datasets_per_query: 1000
     Kaggle:
-      num_attempts: 1
+      num_attempts: 0
       use_cache: True
       init_page: 1
     AWS:
-      num_attempts: 1
+      num_attempts: 0
       use_cache: True
-      num_datasets_per_query: 1000
     PapersWithCode:
       num_attempts: 1
       use_cache: True
@@ -22,7 +21,7 @@ mongodb:
       string: mongodb://localhost:27017
       db_name: coldata
     remote:
-      string: mongodb+srv://diaoenmao:ColAI2023@crawl-data.5blrkb2.mongodb.net/?retryWrites=true&w=majority&appName=Crawl-Data
+      string: null
       db_name: Crawl-Data
   collection_name: dataset
   index_field: index
@@ -33,15 +32,15 @@ vdb:
     host: localhost
     port: '19530'
     index_type: IVF_FLAT
-    metric_type: IP
+    metric_type: COSINE
     nlist: 128
     nprobe: 128
     limit: 4
-    renew: True
+    renew: False
     page_limit: 100
   text:
-    chunk_size: 1024
-    chunk_overlap: 256
+    chunk_size: 128
+    chunk_overlap: 64
     add_start_index: true
   model:
     model_name: all-mpnet-base-v2
@@ -50,3 +49,6 @@ vdb:
     show_progress: True
     device: cpu
     normalize_embeddings: False
+scheduler:
+  init_run: True
+  period: day
