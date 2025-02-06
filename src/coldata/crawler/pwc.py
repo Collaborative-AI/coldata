@@ -16,7 +16,7 @@ class PapersWithCode(Crawler):
     def __init__(self, database, website=None):
         super().__init__(self.data_name, database, website)
         self.num_datasets_per_query = website[self.data_name].get('num_datasets_per_query', 10)
-        self.root_url = 'https://paperswithcode.com/'
+        self.root_url = 'https://paperswithcode.com'
         self.datasets = self.make_datasets()
         self.num_datasets = len(self.datasets)
 
@@ -27,7 +27,7 @@ class PapersWithCode(Crawler):
 
         datasets = set()
         # Pagination is simulated by appending page numbers
-        URL = self.root_url + '?page=1'
+        URL = self.root_url + "/datasets/" + '?page=1'
         page = 1
 
         # 发出请求并解析页面
@@ -44,7 +44,7 @@ class PapersWithCode(Crawler):
             print(f"Dataset link: {link['href']}")  # 打印每个数据集链接
 
         # 暂存到缓存文件中
-        datasets = sorted(list(datasets), key=lambda x: x.split('/')[-1])
+        datasets = sorted([i for i in datasets if i.split("/")[-1] != "datasets"], key=lambda x: x.split('/')[-1])
         save(datasets, os.path.join(self.cache_dir, 'datasets'))
         '''
         while True:
