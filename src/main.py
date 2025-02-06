@@ -10,7 +10,6 @@ def main():
         config = yaml.safe_load(file)
     database = coldata.mongodb.MongoDB(mode=mode, **config['mongodb'])
 
-    print(config['crawler'])
     
     uci = coldata.crawler.UCI(database, **config['crawler'])
     uci.crawl()
