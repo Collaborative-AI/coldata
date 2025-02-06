@@ -27,21 +27,22 @@ class PapersWithCode(Crawler):
 
         datasets = set()
         # Pagination is simulated by appending page numbers
-        URL = self.root_url + "/datasets/" + '?page=1'
-        page = 1
+        for i in range(1, 2):
+            URL = self.root_url + "/datasets/" + f'?page={i}'
+    
+            # 发出请求并解析页面
+            response = requests.get(URL)
+            response.encoding = 'utf-8'
+            soup = bs(response.content, 'html.parser')
+    
+            # 抓取所有以 '/dataset' 开头的链接
+            dataset_links = soup.select('a[href^="/dataset"]')
+            #print(f"Page {page}: Found {len(dataset_links)} dataset links")  # Debug 打印
 
-        # 发出请求并解析页面
-        response = requests.get(URL)
-        response.encoding = 'utf-8'
-        soup = bs(response.content, 'html.parser')
-
-        # 抓取所有以 '/dataset' 开头的链接
-        dataset_links = soup.select('a[href^="/dataset"]')
-        print(f"Page {page}: Found {len(dataset_links)} dataset links")  # Debug 打印
-
-        for link in dataset_links:
-            datasets.add(link['href'])
-            print(f"Dataset link: {link['href']}")  # 打印每个数据集链接
+            for link in dataset_links:
+                if link['href'].split("/")[-1] != "datasets":
+                    datasets.add(link['href'])
+                    #print(f"Dataset link: {link['href']}")  # 打印每个数据集链接
 
         # 暂存到缓存文件中
         datasets = sorted([i for i in datasets if i.split("/")[-1] != "datasets"], key=lambda x: x.split('/')[-1])
