@@ -78,7 +78,7 @@ class PapersWithCode(Crawler):
         data['URL'] = url
 
         # Parse datasets from soup
-        elements = soup.find_all(['h1', 'p', 'a', 'footer'])
+        elements = soup.find_all(['h1', 'p', 'a', 'footer', 'h4', 'h5'])
         current_group = {'header': None, 'content': []}
 
         cookie_keywords = ["cookie", "privacy", "consent", "policy"]
@@ -87,19 +87,19 @@ class PapersWithCode(Crawler):
         for element in elements:
             if element.name == 'footer' or element.get('class') == ['footer'] or element.get('id') == 'footer':
                 break
-            if element.name == 'h1':
+            if element.name == 'h1' or element.name == 'h4':
                 if current_group['header'] is not None:
                     if len(current_group['content']) > 0:
                         if if_first:
                             data['Title'] = clean_text(current_group['header'])
-                            data['Description'] = join_content(current_group['content'])
+                            data['Description'] = current_group['content'][2]
                             if_first = False
                         else:
-                            data[current_group['header']] = join_content(current_group['content'])
+                            data[current_group['header'].strip().split("\n")[0]] = join_content(current_group['content'])
                 header = element.get_text()
                 current_group = {'header': header, 'content': []}
             elif element.name in ['p', 'a']:
-                content = element.get_text()
+                content = element.get_text().strip()
                 if any(keyword.lower() in content.lower() for keyword in cookie_keywords):
                     continue
                 current_group['content'].append(content)
@@ -111,7 +111,6 @@ class PapersWithCode(Crawler):
                     data['Description'] = join_content(current_group['content'])
                 else:
                     data[current_group['header']] = join_content(current_group['content'])
-
         return data
 
     def crawl(self):
