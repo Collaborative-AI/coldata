@@ -39,6 +39,7 @@ class Kaggle(Crawler):
 
     def make_data(self, metadata):
         data = {
+            'website': 'Kaggle',
             "id": metadata.get("id", ""),
             "title": metadata.get("title", ""),
             "subtitle": metadata.get("subtitle", ""),

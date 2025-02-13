@@ -36,6 +36,7 @@ class AWS(Crawler):
     def make_data(self, url, soup):
         index = hashlib.sha256(url.encode()).hexdigest()
         data = {}
+        data['website'] = 'AWS'
         data['index'] = index
         data['URL'] = url
 

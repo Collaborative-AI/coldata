@@ -2,7 +2,7 @@
 
 # MongoDB Connection Parameters
 MONGO_URI="mongodb://localhost:27017"  # Modify with your MongoDB URI
-DATABASE_NAME="coldata_tmp"  # Default database name
+DATABASE_NAME="tmp"  # Default database name
 COLLECTION_NAME="dataset"  # Default collection name (empty means entire database)
 BACKUP_DIR="./output/mongodb"  # Default backup directory
 
