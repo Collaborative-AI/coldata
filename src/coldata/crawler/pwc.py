@@ -84,10 +84,18 @@ class PapersWithCode(Crawler):
         cookie_keywords = ["cookie", "privacy", "consent", "policy"]
 
         if_first = True
+        if_h4 = False
         for element in elements:
             if element.name == 'footer' or element.get('class') == ['footer'] or element.get('id') == 'footer':
                 break
-            if element.name == 'h1' or element.name == 'h4':
+            if element.name == 'h1' and not if_h4:
+                if current_group['header'] is not None:
+                    if len(current_group['content']) > 0:
+                            data[current_group['header'].strip().split("\n")[0]] = join_content(current_group['content'])
+                header = element.get_text()
+                current_group = {'header': header, 'content': []}
+            elif element.name == 'h4':
+                if_h4 = True
                 if current_group['header'] is not None:
                     if len(current_group['content']) > 0:
                         if if_first:
@@ -99,7 +107,9 @@ class PapersWithCode(Crawler):
                 header = element.get_text()
                 current_group = {'header': header, 'content': []}
             elif element.name in ['p', 'a']:
-                content = element.get_text().strip()
+                if "https" in element.get_text():
+                    continue
+                content = element.get_text().strip().replace("Add a new result", "").replace("Link an existing benchmark", "").replace("Add", "").replace("Remove", "")
                 if any(keyword.lower() in content.lower() for keyword in cookie_keywords):
                     continue
                 current_group['content'].append(content)
@@ -110,7 +120,7 @@ class PapersWithCode(Crawler):
                     data['Title'] = clean_text(current_group['header'])
                     data['Description'] = join_content(current_group['content'])
                 else:
-                    data[current_group['header']] = join_content(current_group['content'])
+                    data[current_group['header'].strip().split("\n")[0]] = join_content(current_group['content'][:-4])
         return data
 
     def crawl(self):
