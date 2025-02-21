@@ -12,17 +12,17 @@ def main():
     database = coldata.mongodb.MongoDB(mode=mode, **config['mongodb'])
 
     
-    uci = coldata.crawler.UCI(database, **config['crawler'])
-    uci.crawl()
-    uci.upload()
-
-    kaggle = coldata.crawler.Kaggle(database, **config['crawler'])
-    kaggle.crawl()
-    kaggle.upload()
+    # uci = coldata.crawler.UCI(database, **config['crawler'])
+    # uci.crawl(is_upload=True)
+    # uci.upload()
+    #
+    # kaggle = coldata.crawler.Kaggle(database, **config['crawler'])
+    # kaggle.crawl(is_upload=True)
+    # kaggle.upload()
 
     aws = coldata.crawler.AWS(database, **config['crawler'])
-    aws.crawl()
-    aws.upload()
+    data = aws.crawl(is_upload=True)
+    # aws.upload(data)
 
     # pwc = coldata.crawler.PapersWithCode(database, **config['crawler'])
     # pwc.crawl()

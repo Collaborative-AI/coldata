@@ -1,6 +1,7 @@
 import hashlib
 import os
 import requests
+import time
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
 from .crawler import Crawler
@@ -84,7 +85,7 @@ class UCI(Crawler):
 
         return data
 
-    def crawl(self):
+    def crawl(self, is_upload=False):
         if not self.attempts_check():
             return
         if self.num_attempts is not None:
@@ -100,19 +101,23 @@ class UCI(Crawler):
             page_i = requests.get(url_i)
             soup_i = bs(page_i.text, 'html.parser')
             data_i = self.make_data(url_i, soup_i)
+            if is_upload:
+                is_insert = self._upload_data(data_i, self.verbose)
+            else:
+                is_insert = False
+            if is_insert and self.query_interval > 0:
+                time.sleep(self.query_interval)
             data.append(data_i)
-        self.data = data
-        return self.data
+        return data
 
-    def upload(self):
+    def upload(self, data):
         if not self.attempts_check():
             return
         count = 0
-        print(f'Start uploading ({self.data_name})...')
-        for data in tqdm(self.data):
-            existing_data = self.database.collection.find_one({'index': data['index']})
-            if existing_data is None:
-                self.database.collection.insert_one(data)
+        print('Start uploading ({})...'.format(self.data_name))
+        for data_i in tqdm(data):
+            is_insert = self._upload_data(data_i, self.verbose)
+            if is_insert:
                 count += 1
-        print(f'Insert {count} records.')
+        print('Insert {} records.'.format(count))
         return
