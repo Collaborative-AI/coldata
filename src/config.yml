@@ -7,13 +7,13 @@ crawler:
       query_interval: 0.1
       verbose: True
     Kaggle:
-      num_attempts: 0
+      num_attempts: null
       use_cache: True
       init_page: 1
       query_interval: 0.1
       verbose: True
     AWS:
-      num_attempts: null
+      num_attempts: 0
       use_cache: True
       query_interval: 0.1
       verbose: True

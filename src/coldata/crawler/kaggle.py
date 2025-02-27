@@ -29,8 +29,9 @@ class Kaggle(Crawler):
         self.page = self.init_page
         datasets = []
         while True:
-            result = self.api.dataset_list(page=self.page)
-            if not result or (self.num_attempts is not None and attempts_count >= self.num_attempts):
+            print(self.page, attempts_count)
+            result = self.api.dataset_list(page=self.page)  # TODO: need try catch and test
+            if result is None or (self.num_attempts is not None and attempts_count >= self.num_attempts):
                 break
             datasets.extend(result)
             attempts_count += len(result)
@@ -80,40 +81,52 @@ class Kaggle(Crawler):
         if os.path.exists(os.path.join(self.cache_dir, self.tmp_metadata_filename)):
             os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))
         data = []
+        # makedir_exist_ok(os.path.join(self.cache_dir, 'json'))
         for dataset in datasets:
             index = hashlib.sha256(dataset.url.encode()).hexdigest()
-            makedir_exist_ok(os.path.join(self.cache_dir, 'json'))
-            data_path = os.path.join(self.cache_dir, 'json', '{}.json'.format(index))
-            if not (self.use_cache and os.path.exists(data_path)):
-                self.api.dataset_metadata(dataset.ref, path=self.cache_dir)
-                with open(os.path.join(self.cache_dir, self.tmp_metadata_filename), 'r') as file:
-                    data_i = json.load(file)
-                    data_i['index'] = index
-                    data_i['URL'] = dataset.url
-                data_i = self.make_data(data_i)
-                with open(data_path, 'w') as file:
-                    json.dump(data_i, file)
-                os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))
-                if is_upload:
-                    is_insert = self._upload_data(data_i, self.verbose)
-                else:
-                    is_insert = False
-                if is_insert and self.query_interval > 0:
-                    time.sleep(self.query_interval)
-                data.append(data_i)
+            # data_path = os.path.join(self.cache_dir, 'json', '{}.json'.format(index))
+            # if not (self.use_cache and os.path.exists(data_path)):
+            self.api.dataset_metadata(dataset.ref, path=self.cache_dir)
+            with open(os.path.join(self.cache_dir, self.tmp_metadata_filename), 'r') as file:
+                data_i = json.load(file)
+            data_i['index'] = index
+            data_i['URL'] = dataset.url
+            data_i = self.make_data(data_i)
+            # with open(data_path, 'w') as file:
+            #     json.dump(data_i, file)
+            os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))
+            if is_upload:
+                is_insert = self._upload_data(data_i, self.verbose)
+            else:
+                is_insert = False
+            if is_insert and self.query_interval > 0:
+                time.sleep(self.query_interval)
+            data.append(data_i)
         return data
+
+    # def upload(self, data):
+    #     if not self.attempts_check():
+    #         return
+    #     count = 0
+    #     print(f'Start uploading ({self.data_name})...')
+    #     filenames = os.listdir(os.path.join(self.cache_dir, 'json'))
+    #     for i in tqdm(range(len(filenames))):
+    #         with open(os.path.join(self.cache_dir, 'json', filenames[i]), 'r') as file:
+    #             data_i = json.load(file)
+    #             is_insert = self._upload_data(data_i, self.verbose)
+    #             if is_insert:
+    #                 count += 1
+    #     print(f'Insert {count} records')
+    #     return
 
     def upload(self, data):
         if not self.attempts_check():
             return
         count = 0
-        print(f'Start uploading ({self.data_name})...')
-        filenames = os.listdir(os.path.join(self.cache_dir, 'json'))
-        for i in tqdm(range(len(filenames))):
-            with open(os.path.join(self.cache_dir, 'json', filenames[i]), 'r') as file:
-                data_i = json.load(file)
-                is_insert = self._upload_data(data_i, self.verbose)
-                if is_insert:
-                    count += 1
-        print(f'Insert {count} records')
+        print('Start uploading ({})...'.format(self.data_name))
+        for data_i in tqdm(data):
+            is_insert = self._upload_data(data_i, self.verbose)
+            if is_insert:
+                count += 1
+        print('Insert {} records.'.format(count))
         return
