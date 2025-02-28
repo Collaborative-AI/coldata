@@ -24,9 +24,17 @@ class AWS(Crawler):
             return datasets
 
         url = set()
-        page = requests.get(self.root_url)
-        page.encoding = 'utf-8'
-        soup = bs(page.content, 'html.parser')
+        while True:
+            try:
+                response = requests.get(self.root_url)
+                response.raise_for_status()  # Raise an HTTPError for bad responses (4xx, 5xx)
+                response.encoding = 'utf-8'
+                break
+            except Exception as e:
+                print('Error fetching the page {}: {}'.format(self.root_url, e))
+            time.sleep(self.query_interval)
+
+        soup = bs(response.content, 'html.parser')
         datasets = soup.find_all('div', class_='dataset')
         for dataset in tqdm(datasets):
             url.add(dataset.find('a')['href'])

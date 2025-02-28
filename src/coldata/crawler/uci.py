@@ -25,14 +25,22 @@ class UCI(Crawler):
             return datasets
 
         datasets = set()
-        URL = self.root_url + f'/datasets?skip=0&take={self.num_datasets_per_query}&sort=desc&orderBy=NumHits&search='
-        response = requests.get(URL)
-        response.encoding = 'utf-8'
+        url = self.root_url + f'/datasets?skip=0&take={self.num_datasets_per_query}&sort=desc&orderBy=NumHits&search='
+        while True:
+            try:
+                response = requests.get(url)  # TODO: need try catch and test
+                response.encoding = 'utf-8'
+                response.raise_for_status()  # Raise an HTTPError for bad responses (4xx, 5xx)
+                response.encoding = 'utf-8'
+                break
+            except Exception as e:
+                print('Error fetching the page {}: {}'.format(url, e))
+
+        time.sleep(self.query_interval)
         soup = bs(response.content, 'html.parser')
         for h2 in soup.find_all('h2'):
             datasets.add(h2.find('a')['href'])
         datasets = sorted(list(datasets), key=lambda x: x.split('/')[-1])
-
         save(datasets, os.path.join(self.cache_dir, 'datasets'))
         return datasets
 

@@ -8,9 +8,9 @@ crawler:
       verbose: True
     Kaggle:
       num_attempts: null
-      use_cache: True
+      use_cache: False
       init_page: 1
-      query_interval: 0.1
+      query_interval: 1.0
       verbose: True
     AWS:
       num_attempts: 0
