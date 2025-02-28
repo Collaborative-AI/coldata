@@ -12,6 +12,7 @@ def main():
 
     database = coldata.mongodb.MongoDB(mode=mode, **config['mongodb'])
 
+    
     uci = coldata.crawler.UCI(database, **config['crawler'])
     uci.crawl()
     uci.upload()
@@ -23,7 +24,11 @@ def main():
     aws = coldata.crawler.AWS(database, **config['crawler'])
     aws.crawl()
     aws.upload()
-
+    '''
+    pwc = coldata.crawler.PapersWithCode(database, **config['crawler'])
+    pwc.crawl()
+    pwc.upload()
+    '''
     vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
     if if_update or config['vdb']['milvus']['renew']:
         vdb.update(database)

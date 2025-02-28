@@ -11,6 +11,13 @@ crawler:
     AWS:
       num_attempts: 1
       use_cache: True
+      num_datasets_per_query: 10
+    OpenDataLab:
+      num_attempts: 1
+      use_cache: True
+      num_datasets_per_query: 12
+  selenium:
+    chromedriver_path: "/path/to/chromedriver"
 mongodb:
   key:
     local:
