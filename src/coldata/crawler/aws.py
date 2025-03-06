@@ -23,24 +23,24 @@ class AWS(Crawler):
             datasets = load(os.path.join(self.cache_dir, 'datasets'))
             return datasets
 
-        url = set()
         while True:
             try:
-                response = requests.get(self.root_url)
-                response.raise_for_status()  # Raise an HTTPError for bad responses (4xx, 5xx)
-                response.encoding = 'utf-8'
+                result = requests.get(self.root_url)
+                result.encoding = 'utf-8'
+                result.raise_for_status()  # Raise an HTTPError for bad responses (4xx, 5xx)
                 break
             except Exception as e:
                 print('Error fetching the page {}: {}'.format(self.root_url, e))
             time.sleep(self.query_interval)
 
-        soup = bs(response.content, 'html.parser')
-        datasets = soup.find_all('div', class_='dataset')
-        for dataset in tqdm(datasets):
-            url.add(dataset.find('a')['href'])
-        url = list(url)
-        save(url, os.path.join(self.cache_dir, 'datasets'))
-        return url
+        datasets = set()
+        soup = bs(result.content, 'html.parser')
+        for dataset in tqdm(soup.find_all('div', class_='dataset')):
+            datasets.add(dataset.find('a')['href'])
+        datasets = list(datasets)
+        datasets = sorted(list(datasets), key=lambda x: x.split('/')[1])
+        save(datasets, os.path.join(self.cache_dir, 'datasets'))
+        return datasets
 
     def make_data(self, url, soup):
         index = hashlib.sha256(url.encode()).hexdigest()

@@ -29,20 +29,16 @@ class Kaggle(Crawler):
         self.page = self.init_page
         datasets = []
         while True:
-            print(self.page, attempts_count)
             try:
                 result = self.api.dataset_list(page=self.page)
-
                 if result is None:
                     print('No datasets found on page {}.'.format(self.page))
                     break
-
                 datasets.extend(result)
                 attempts_count += len(result)
                 if self.num_attempts is not None and attempts_count >= self.num_attempts:
-                    print('Reached the maximum number of attempts ({})'.format({self.num_attempts}))
+                    print('Reached the maximum number of attempts: {}'.format(self.num_attempts))
                     break
-
                 self.page += 1
                 time.sleep(self.query_interval)
             except Exception as e:
@@ -84,15 +80,17 @@ class Kaggle(Crawler):
     def crawl(self, is_upload=False):
         if not self.attempts_check():
             return
-
-        if self.num_attempts is not None:
+        if self.num_attempts is not None: # TODO: make a function
             datasets = self.datasets[:self.num_attempts]
+            indices = range(self.num_attempts)
         else:
             datasets = self.datasets
+            indices = range(len(list(datasets)))
         if os.path.exists(os.path.join(self.cache_dir, self.tmp_metadata_filename)):
             os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))
         data = []
-        for dataset in datasets:
+        for i in tqdm(indices):
+            dataset = datasets[i]
             index = hashlib.sha256(dataset.url.encode()).hexdigest()
             self.api.dataset_metadata(dataset.ref, path=self.cache_dir)
             with open(os.path.join(self.cache_dir, self.tmp_metadata_filename), 'r') as file:

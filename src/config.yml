@@ -3,24 +3,26 @@ crawler:
     UCI:
       num_attempts: 0
       use_cache: True
-      num_datasets_per_query: 1000
       query_interval: 0.1
       verbose: True
+      num_datasets_per_query: 1000
     Kaggle:
-      num_attempts: null
-      use_cache: False
-      init_page: 1
+      num_attempts: 0
+      use_cache: True
       query_interval: 1.0
       verbose: True
+      init_page: 1
     AWS:
       num_attempts: 0
       use_cache: True
       query_interval: 0.1
       verbose: True
     PapersWithCode:
-      num_attempts: 0
-      use_cache: True
-      num_datasets_per_query: 10
+      num_attempts: 1
+      use_cache: False
+      query_interval: 0.1
+      verbose: True
+      init_page: 0
 mongodb:
   key:
     local:
