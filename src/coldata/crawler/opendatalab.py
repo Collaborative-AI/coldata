@@ -9,21 +9,19 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from .crawler import Crawler
 from .utils import clean_text, join_content
-# TODO: add cache if exists
 from ..utils import save, load
-
 
 class OpenDataLab(Crawler):
     data_name = 'OpenDataLab'
 
-    # TODO: change to config
-    # TODO: change the path using os.path
-    def __init__(self, database, website=None, root_url="https://opendatalab.com",
-                 driver_path="/Users/tiffanymacair/Desktop/chromedriver-mac-arm64/chromedriver"):
+    def __init__(self, database, website=None, selenium=None):
         super().__init__(self.data_name, database, website)
-        self.root_url = root_url
-        self.driver_path = driver_path
+        self.root_url = 'https://opendatalab.com'
+        self.driver_path = selenium.get("chromedriver_path")
         self.driver = self._initialize_driver()
+        self.num_datasets_per_query = website[self.data_name]['num_datasets_per_query']
+        self.datasets = self.make_datasets()
+        self.num_datasets = len(self.datasets)
 
     def _initialize_driver(self):
         options = Options()
@@ -32,9 +30,14 @@ class OpenDataLab(Crawler):
         service = Service(self.driver_path)
         return webdriver.Chrome(service=service, options=options)
 
-    def make_datasets(self, page_no=1, page_size=12):
+    def make_datasets(self, page_no=1):
+        if self.use_cache and os.path.exists(os.path.join(self.cache_dir, 'datasets')):
+            datasets = load(os.path.join(self.cache_dir, 'datasets'))
+            return datasets
+
         datasets = set()
-        url = f"{self.root_url}/?pageNo={page_no}&pageSize={page_size}&sort=all"
+        url = f"{self.root_url}/?pageNo={page_no}&pageSize={self.num_datasets_per_query}&sort=all"
+        print(f"Fetching page: {url}")
         self.driver.get(url)
         time.sleep(5)  # Wait for JavaScript to load the content
         soup = bs(self.driver.page_source, 'html.parser')
@@ -45,9 +48,11 @@ class OpenDataLab(Crawler):
             href = card.get('href')
             if href:
                 datasets.add(self.root_url + href if not href.startswith('http') else href)
+        datasets = sorted(list(datasets), key=lambda x: x.split('/')[-1])
+        save(datasets, os.path.join(self.cache_dir, 'datasets'))
         return datasets
 
-    def make_data(self, url):
+    def make_data(self, url, soup):
         # Load the page content
         self.driver.get(url)
         time.sleep(5)
@@ -93,7 +98,7 @@ class OpenDataLab(Crawler):
                     data[current_group['header']] = join_content(current_group['content'])
         return data
 
-    def crawl(self):  # TODO: this does not used, needs refactor
+    def crawl(self): 
         if not self.attempts_check():
             return
         if self.num_attempts is not None:
@@ -105,7 +110,9 @@ class OpenDataLab(Crawler):
         print(f'Start crawling ({self.data_name})...')
         data = []
         for i in tqdm(indices):
-            url_i = self.root_url + datasets[i]
+            #url_i = self.root_url + datasets[i]
+            url_i = datasets[i] if datasets[i].startswith("http") else f"{self.root_url}/{datasets[i]}"
+            print(f"Fetching dataset page: {url_i}")
             page_i = requests.get(url_i)
             soup_i = bs(page_i.text, 'html.parser')
             data_i = self.make_data(url_i, soup_i)
@@ -118,38 +125,10 @@ class OpenDataLab(Crawler):
             return
         count = 0
         print(f'Start uploading ({self.data_name})...')
-        for data in tqdm(self.data):
+        for data in tqdm(self.data): 
             existing_data = self.database.collection.find_one({'index': data['index']})
             if existing_data is None:
                 self.database.collection.insert_one(data)
                 count += 1
         print(f'Insert {count} records.')
         return
-
-# TODO use main.py to test
-'''
-Test main class:
-if __name__ == "__main__":
-    crawler = OpenDataLab(driver_path="/Users/tiffanymacair/Desktop/chromedriver-mac-arm64/chromedriver")
-    try:
-        # Collect dataset links
-        datasets = crawler.make_datasets(page_no=1, page_size=12)
-        print("Found datasets:", datasets)
-
-        # Collect metadata for each dataset
-        all_data = []
-        for dataset_url in datasets:
-            dataset_info = crawler.make_data(dataset_url)
-            all_data.append(dataset_info)
-        
-        # Crawl data
-        crawled_data = crawler.crawl()
-        if crawled_data:
-            print(f"Crawled {len(crawled_data)} datasets:")
-            for data in crawled_data:
-                print(data)
-        else:
-            print("No datasets crawled.")
-    finally:
-        crawler.driver.quit()
-'''
