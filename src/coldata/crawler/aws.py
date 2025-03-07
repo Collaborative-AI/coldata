@@ -1,6 +1,7 @@
 import hashlib
 import os
 import requests
+import time
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
 from .crawler import Crawler
@@ -22,20 +23,29 @@ class AWS(Crawler):
             datasets = load(os.path.join(self.cache_dir, 'datasets'))
             return datasets
 
-        url = set()
-        page = requests.get(self.root_url)
-        page.encoding = 'utf-8'
-        soup = bs(page.content, 'html.parser')
-        datasets = soup.find_all('div', class_='dataset')
-        for dataset in tqdm(datasets):
-            url.add(dataset.find('a')['href'])
-        url = list(url)
-        save(url, os.path.join(self.cache_dir, 'datasets'))
-        return url
+        while True:
+            try:
+                result = requests.get(self.root_url)
+                result.encoding = 'utf-8'
+                result.raise_for_status()  # Raise an HTTPError for bad responses (4xx, 5xx)
+                break
+            except Exception as e:
+                print('Error fetching the page {}: {}'.format(self.root_url, e))
+            time.sleep(self.query_interval)
+
+        datasets = set()
+        soup = bs(result.content, 'html.parser')
+        for dataset in tqdm(soup.find_all('div', class_='dataset')):
+            datasets.add(dataset.find('a')['href'])
+        datasets = list(datasets)
+        datasets = sorted(list(datasets), key=lambda x: x.split('/')[1])
+        save(datasets, os.path.join(self.cache_dir, 'datasets'))
+        return datasets
 
     def make_data(self, url, soup):
         index = hashlib.sha256(url.encode()).hexdigest()
         data = {}
+        data['website'] = 'AWS'
         data['index'] = index
         data['URL'] = url
 
@@ -76,7 +86,7 @@ class AWS(Crawler):
                     data[current_group['header']] = join_content(current_group['content'])
         return data
 
-    def crawl(self):
+    def crawl(self, is_upload=False):
         if not self.attempts_check():
             return
         if self.num_attempts is not None:
@@ -92,19 +102,23 @@ class AWS(Crawler):
             page_i = requests.get(url_i)
             soup_i = bs(page_i.text, 'html.parser')
             data_i = self.make_data(url_i, soup_i)
+            if is_upload:
+                is_insert = self._upload_data(data_i, self.verbose)
+            else:
+                is_insert = False
+            if is_insert and self.query_interval > 0:
+                time.sleep(self.query_interval)
             data.append(data_i)
-        self.data = data
-        return self.data
+        return data
 
-    def upload(self):
+    def upload(self, data):
         if not self.attempts_check():
             return
         count = 0
-        print(f'Start uploading ({self.data_name})...')
-        for data in tqdm(self.data):
-            existing_data = self.database.collection.find_one({'index': data['index']})
-            if existing_data is None:
-                self.database.collection.insert_one(data)
+        print('Start uploading ({})...'.format(self.data_name))
+        for data_i in tqdm(data):
+            is_insert = self._upload_data(data_i, self.verbose)
+            if is_insert:
                 count += 1
-        print(f'Insert {count} records.')
+        print('Insert {} records.'.format(count))
         return
