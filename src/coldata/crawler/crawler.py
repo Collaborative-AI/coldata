@@ -45,3 +45,12 @@ class Crawler:
             else:
                 tqdm.write('Exist and skip: {}'.format(data['URL']))
         return is_insert
+
+    def _insert_data(self, data_i, is_upload):
+        if is_upload:
+            is_insert = self._upload_data(data_i, self.verbose)
+        else:
+            is_insert = False
+        if is_insert and self.query_interval > 0:
+            time.sleep(self.query_interval)
+        return

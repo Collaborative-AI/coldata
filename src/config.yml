@@ -18,7 +18,7 @@ crawler:
       query_interval: 0.1
       verbose: True
     PapersWithCode:
-      num_attempts: 1
+      num_attempts: 0
       use_cache: False
       query_interval: 0.1
       verbose: True
@@ -26,9 +26,13 @@ crawler:
     OpenDataLab:
       num_attempts: 1
       use_cache: True
-      num_datasets_per_query: 12
+      query_interval: 0.1
+      verbose: True
+      init_page: 1
+      num_datasets_per_query: 12 # TODO: this may not need
   selenium:
-    chromedriver_path: "/path/to/chromedriver"
+#    chromedriver_path: '/path/to/chromedriver'
+    chromedriver_path: 'D:\ChromeDriver\chromedriver-win64\chromedriver.exe'
 mongodb:
   key:
     local:

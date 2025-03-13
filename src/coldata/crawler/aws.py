@@ -12,8 +12,8 @@ from ..utils import save, load
 class AWS(Crawler):
     data_name = 'AWS'
 
-    def __init__(self, database, website=None):
-        super().__init__(self.data_name, database, website)
+    def __init__(self, database, website=None, **kwargs):
+        super().__init__(self.data_name, database, website, **kwargs)
         self.root_url = 'https://registry.opendata.aws'
         self.datasets = self.make_datasets()
         self.num_datasets = len(self.datasets)
@@ -90,24 +90,21 @@ class AWS(Crawler):
         if not self.attempts_check():
             return
         if self.num_attempts is not None:
-            datasets = self.datasets[:self.num_attempts]
-            indices = range(self.num_attempts)
+            indices = range(min(self.num_attempts, len(list(self.datasets))))
         else:
-            datasets = self.datasets
-            indices = range(len(list(datasets)))
+            indices = range(len(list(self.datasets)))
         print(f'Start crawling ({self.data_name})...')
         data = []
         for i in tqdm(indices):
-            url_i = self.root_url + datasets[i]
+            url_i = self.root_url + self.datasets[i]
             page_i = requests.get(url_i)
             soup_i = bs(page_i.text, 'html.parser')
             data_i = self.make_data(url_i, soup_i)
             if is_upload:
-                is_insert = self._upload_data(data_i, self.verbose)
+                self._upload_data(data_i, self.verbose)
             else:
-                is_insert = False
-            if is_insert and self.query_interval > 0:
-                time.sleep(self.query_interval)
+                if self.query_interval > 0:
+                    time.sleep(self.query_interval)
             data.append(data_i)
         return data
 

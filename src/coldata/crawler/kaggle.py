@@ -11,8 +11,8 @@ from ..utils import save, load
 class Kaggle(Crawler):
     data_name = 'Kaggle'
 
-    def __init__(self, database, website=None):
-        super().__init__(self.data_name, database, website)
+    def __init__(self, database, website=None, **kwargs):
+        super().__init__(self.data_name, database, website, **kwargs)
         self.init_page = website[self.data_name]['init_page']
         self.tmp_metadata_filename = 'dataset-metadata.json'
         self.api = kaggle.KaggleApi()
@@ -28,7 +28,7 @@ class Kaggle(Crawler):
         attempts_count = 0
         self.page = self.init_page
         datasets = []
-        while True:
+        while True:   # TODO: need to test termination
             try:
                 result = self.api.dataset_list(page=self.page)
                 if result is None:
@@ -80,17 +80,15 @@ class Kaggle(Crawler):
     def crawl(self, is_upload=False):
         if not self.attempts_check():
             return
-        if self.num_attempts is not None: # TODO: make a function
-            datasets = self.datasets[:self.num_attempts]
-            indices = range(self.num_attempts)
+        if self.num_attempts is not None:
+            indices = range(min(self.num_attempts, len(list(self.datasets))))
         else:
-            datasets = self.datasets
-            indices = range(len(list(datasets)))
+            indices = range(len(list(self.datasets)))
         if os.path.exists(os.path.join(self.cache_dir, self.tmp_metadata_filename)):
             os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))
         data = []
         for i in tqdm(indices):
-            dataset = datasets[i]
+            dataset = self.datasets[i]
             index = hashlib.sha256(dataset.url.encode()).hexdigest()
             self.api.dataset_metadata(dataset.ref, path=self.cache_dir)
             with open(os.path.join(self.cache_dir, self.tmp_metadata_filename), 'r') as file:
@@ -100,11 +98,10 @@ class Kaggle(Crawler):
             data_i = self.make_data(data_i)
             os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))
             if is_upload:
-                is_insert = self._upload_data(data_i, self.verbose)
+                self._upload_data(data_i, self.verbose)
             else:
-                is_insert = False
-            if is_insert and self.query_interval > 0:
-                time.sleep(self.query_interval)
+                if self.query_interval > 0:
+                    time.sleep(self.query_interval)
             data.append(data_i)
         return data
 

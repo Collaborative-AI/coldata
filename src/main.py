@@ -24,6 +24,9 @@ def main():
     pwc = coldata.crawler.PapersWithCode(database, **config['crawler'])
     pwc.crawl(is_upload=True)
 
+    opendatalab = coldata.crawler.OpenDataLab(database, **config['crawler'])
+    opendatalab.crawl(is_upload=True)
+
     if setup_milvus:
         vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
         if is_update or config['vdb']['milvus']['renew']:
