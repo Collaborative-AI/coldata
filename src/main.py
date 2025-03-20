@@ -11,11 +11,11 @@ def main():
         config = yaml.safe_load(file)
     database = coldata.mongodb.MongoDB(mode=mode, **config['mongodb'])
 
-    
     uci = coldata.crawler.UCI(database, **config['crawler'])
     uci.crawl(is_upload=True)
 
     kaggle = coldata.crawler.Kaggle(database, **config['crawler'])
+    exit()
     kaggle.crawl(is_upload=True)
 
     aws = coldata.crawler.AWS(database, **config['crawler'])

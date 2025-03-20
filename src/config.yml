@@ -22,7 +22,7 @@ crawler:
       use_cache: False
       query_interval: 0.1
       verbose: True
-      init_page: 0
+      init_page: 1
     OpenDataLab:
       num_attempts: 1
       use_cache: True

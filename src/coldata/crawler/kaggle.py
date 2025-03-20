@@ -28,12 +28,10 @@ class Kaggle(Crawler):
         attempts_count = 0
         self.page = self.init_page
         datasets = []
-        while True:   # TODO: need to test termination
+        while True:
             try:
                 result = self.api.dataset_list(page=self.page)
-                if result is None:
-                    print('No datasets found on page {}.'.format(self.page))
-                    break
+                tmp = result[0]  # used for index cehck
                 datasets.extend(result)
                 attempts_count += len(result)
                 if self.num_attempts is not None and attempts_count >= self.num_attempts:
@@ -42,6 +40,9 @@ class Kaggle(Crawler):
                 self.page += 1
                 time.sleep(self.query_interval)
             except Exception as e:
+                if str(e) == 'list index out of range':
+                    print('No datasets found on page {}.'.format(self.page))
+                    break
                 print('Error fetching datasets on page {}: {}'.format(self.page, e))
                 time.sleep(self.query_interval * 10)
         save(datasets, os.path.join(self.cache_dir, 'datasets'))

@@ -27,6 +27,7 @@ class PapersWithCode(Crawler):
         attempts_count = 0
         self.page = self.init_page
         datasets = []
+        last_result = None
         while True:
             try:
                 url = self.root_url + '/datasets/' + f'?page={self.page}'
@@ -41,9 +42,11 @@ class PapersWithCode(Crawler):
                         result.append(link['href'])
                 datasets.extend(result)
                 attempts_count += len(result)
-                if len(result) == 0:  # TODO: need to test termination
+                if last_result == tuple(result): # TODO: test if enough
                     print('No datasets found on page {}.'.format(self.page))
                     break
+                else:
+                    last_result = tuple(result)
                 if self.num_attempts is not None and attempts_count >= self.num_attempts:
                     print('Reached the maximum number of attempts: {}'.format(self.num_attempts))
                     break
