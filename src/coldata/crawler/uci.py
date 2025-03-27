@@ -20,6 +20,10 @@ class UCI(Crawler):
         self.num_datasets = len(self.datasets)
 
     def make_datasets(self):
+        if self.num_attempts is not None and self.num_attempts == 0:
+            datasets = []
+            return datasets
+
         if self.use_cache and os.path.exists(os.path.join(self.cache_dir, 'datasets')):
             datasets = load(os.path.join(self.cache_dir, 'datasets'))
             return datasets

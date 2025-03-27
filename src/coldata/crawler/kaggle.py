@@ -21,29 +21,33 @@ class Kaggle(Crawler):
         self.num_datasets = len(self.datasets)
 
     def make_datasets(self):
+        if self.num_attempts is not None and self.num_attempts == 0:
+            datasets = []
+            return datasets
+
         if self.use_cache and os.path.exists(os.path.join(self.cache_dir, 'datasets')):
             datasets = load(os.path.join(self.cache_dir, 'datasets'))
             return datasets
 
         attempts_count = 0
-        self.page = self.init_page
+        page = self.init_page
         datasets = []
         while True:
             try:
-                result = self.api.dataset_list(page=self.page)
+                result = self.api.dataset_list(page=page)
                 tmp = result[0]  # used for index cehck
                 datasets.extend(result)
                 attempts_count += len(result)
                 if self.num_attempts is not None and attempts_count >= self.num_attempts:
                     print('Reached the maximum number of attempts: {}'.format(self.num_attempts))
                     break
-                self.page += 1
+                page += 1
                 time.sleep(self.query_interval)
             except Exception as e:
                 if str(e) == 'list index out of range':
-                    print('No datasets found on page {}.'.format(self.page))
+                    print('No datasets found on page {}.'.format(page))
                     break
-                print('Error fetching datasets on page {}: {}'.format(self.page, e))
+                print('Error fetching datasets on page {}: {}'.format(page, e))
                 time.sleep(self.query_interval * 10)
         save(datasets, os.path.join(self.cache_dir, 'datasets'))
         return datasets

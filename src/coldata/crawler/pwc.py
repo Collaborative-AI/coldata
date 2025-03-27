@@ -20,41 +20,57 @@ class PapersWithCode(Crawler):
         self.num_datasets = len(self.datasets)
 
     def make_datasets(self):
+        if self.num_attempts is not None and self.num_attempts == 0:
+            datasets = []
+            return datasets
+
         if self.use_cache and os.path.exists(os.path.join(self.cache_dir, 'datasets')):
             datasets = load(os.path.join(self.cache_dir, 'datasets'))
             return datasets
 
+        response = requests.get(self.root_url + '/datasets')
+        response.encoding = 'utf-8'
+        soup = bs(response.content, 'html.parser')
+        modality_div = soup.find('div', class_='filter-name', string=lambda t: t and 'Filter by Modality' in t)
+        modality_section = modality_div.find_parent()
+        modality_filters = modality_section.find_all('a', class_='filter-item')
+        labels = [a.find(text=True, recursive=False).strip() for a in modality_filters]
+        labels = [label.lower().replace(' ', '-') for label in labels]
+
         attempts_count = 0
-        self.page = self.init_page
         datasets = []
         last_result = None
-        while True:
-            try:
-                url = self.root_url + '/datasets/' + f'?page={self.page}'
-                response = requests.get(url)
-                response.encoding = 'utf-8'
-                soup = bs(response.content, 'html.parser')
-                dataset_links = soup.select('a[href^="/dataset"]')
-                attempts_count += len(dataset_links)
-                result = []
-                for link in dataset_links:
-                    if link['href'].split('/')[-1] != 'datasets':
-                        result.append(link['href'])
-                datasets.extend(result)
-                attempts_count += len(result)
-                if last_result == tuple(result): # TODO: test if enough
-                    print('No datasets found on page {}.'.format(self.page))
-                    break
-                else:
-                    last_result = tuple(result)
-                if self.num_attempts is not None and attempts_count >= self.num_attempts:
-                    print('Reached the maximum number of attempts: {}'.format(self.num_attempts))
-                    break
-                self.page += 1
-                time.sleep(self.query_interval)
-            except Exception as e:
-                print('Error fetching datasets on page {}: {}'.format(self.page, e))
-                time.sleep(self.query_interval * 10)
+        for label in labels:
+            page = self.init_page
+            while True:
+                try:
+                    url = self.root_url + '/datasets/' + f'?mod={label}&page={page}'
+                    response = requests.get(url)
+                    response.encoding = 'utf-8'
+                    soup = bs(response.content, 'html.parser')
+                    dataset_links = soup.select('a[href^="/dataset"]')
+                    attempts_count += len(dataset_links)
+                    result = []
+                    for link in dataset_links:
+                        if link['href'].split('/')[-1] != 'datasets':
+                            result.append(link['href'])
+                    datasets.extend(result)
+                    attempts_count += len(result)
+                    if last_result == tuple(result):
+                        print('No datasets found on {} and page {}.'.format(label, page))
+                        break
+                    else:
+                        last_result = tuple(result)
+                    if self.num_attempts is not None and attempts_count >= self.num_attempts:
+                        break
+                    page += 1
+                    time.sleep(self.query_interval)
+                except Exception as e:
+                    print('Error fetching datasets on page {}: {}'.format(page, e))
+                    time.sleep(self.query_interval * 10)
+            if self.num_attempts is not None and attempts_count >= self.num_attempts:
+                print('Reached the maximum number of attempts: {}'.format(self.num_attempts))
+                break
         datasets = sorted(datasets, key=lambda x: x.split('/')[-1])
         save(datasets, os.path.join(self.cache_dir, 'datasets'))
         return datasets
