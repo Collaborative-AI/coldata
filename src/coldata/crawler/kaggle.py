@@ -2,6 +2,7 @@ import hashlib
 import kaggle
 import json
 import os
+import pandas as pd
 import time
 from tqdm import tqdm
 from .crawler import Crawler
@@ -28,6 +29,56 @@ class Kaggle(Crawler):
         if self.use_cache and os.path.exists(os.path.join(self.cache_dir, 'datasets')):
             datasets = load(os.path.join(self.cache_dir, 'datasets'))
             return datasets
+
+        if not os.path.exists(os.path.join(self.cache_dir, 'DatasetVersions.csv')):
+            # download https://www.kaggle.com/datasets/kaggle/meta-kaggle?select=DatasetVersions.csv
+            dataset_version_cmd = 'kaggle datasets download kaggle/meta-kaggle -f DatasetVersions.csv -p {}'.format(
+                self.cache_dir)
+            os.system(dataset_version_cmd)
+
+        # TODO: need to fix and test it
+        # Step 1: Load all CSVs
+        dataset_versions = pd.read_csv('DatasetVersions.csv')
+        datasets = pd.read_csv('Datasets.csv')
+        users = pd.read_csv('Users.csv')
+        orgs = pd.read_csv('Organizations.csv')
+
+        # Step 2: Get unique DatasetId and corresponding Slug
+        latest_versions = dataset_versions[['DatasetId', 'Slug']].drop_duplicates()
+
+        # Step 3: Join with Datasets.csv to get owner ids
+        merged = latest_versions.merge(datasets, left_on='DatasetId', right_on='Id', how='left')
+
+        # Step 4: Map UserId to UserName
+        merged = merged.merge(users[['Id', 'UserName']], left_on='OwnerUserId', right_on='Id', how='left', suffixes=('', '_User'))
+
+        # Step 5: Map OrganizationId to Slug
+        merged = merged.merge(orgs[['Id', 'Slug']], left_on='OwnerOrganizationId', right_on='Id', how='left', suffixes=('', '_Org'))
+
+        # Step 6: Determine owner name (UserName or Org Slug)
+        def resolve_owner(row):
+            if pd.notna(row['UserName']):
+                return row['UserName']
+            elif pd.notna(row['Slug_Org']):
+                return row['Slug_Org']
+            return None
+
+        merged['owner'] = merged.apply(resolve_owner, axis=1)
+
+        # Step 7: Create the final <owner>/<dataset-name> slug
+        merged['slug'] = merged['owner'] + '/' + merged['Slug']
+
+        # Step 8: Get unique slugs
+        final_slugs = merged[['slug']].dropna().drop_duplicates().reset_index(drop=True)
+
+        # Optional: Save to CSV
+        final_slugs.to_csv('FinalDatasetSlugs.csv', index=False)
+
+
+        df = pd.read_csv(os.path.join(self.cache_dir, 'DatasetVersions.csv'))
+        unique_values = len(df['DatasetId'].unique())
+        print(unique_values)
+        exit()
 
         attempts_count = 0
         page = self.init_page

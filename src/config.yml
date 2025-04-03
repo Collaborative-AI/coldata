@@ -7,8 +7,8 @@ crawler:
       verbose: True
       num_datasets_per_query: 1000
     Kaggle:
-      num_attempts: 0
-      use_cache: True
+      num_attempts: 1
+      use_cache: False
       query_interval: 1.0
       verbose: True
       init_page: 1
@@ -18,13 +18,13 @@ crawler:
       query_interval: 0.1
       verbose: True
     PapersWithCode:
-      num_attempts: null
+      num_attempts: 0
       use_cache: False
       query_interval: 0.1
       verbose: True
-      init_page: 99
+      init_page: 1
     OpenDataLab:
-      num_attempts: 1
+      num_attempts: 0
       use_cache: True
       query_interval: 0.1
       verbose: True

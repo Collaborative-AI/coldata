@@ -14,17 +14,17 @@ def main():
     # uci = coldata.crawler.UCI(database, **config['crawler'])
     # uci.crawl(is_upload=True)
     #
-    # kaggle = coldata.crawler.Kaggle(database, **config['crawler'])
-    # kaggle.crawl(is_upload=True)
+    kaggle = coldata.crawler.Kaggle(database, **config['crawler'])
+    kaggle.crawl(is_upload=True)
     #
     # aws = coldata.crawler.AWS(database, **config['crawler'])
     # aws.crawl(is_upload=True)
 
-    pwc = coldata.crawler.PapersWithCode(database, **config['crawler'])
-    pwc.crawl(is_upload=True)
-
-    opendatalab = coldata.crawler.OpenDataLab(database, **config['crawler'])
-    opendatalab.crawl(is_upload=True)
+    # pwc = coldata.crawler.PapersWithCode(database, **config['crawler'])
+    # pwc.crawl(is_upload=True)
+    #
+    # opendatalab = coldata.crawler.OpenDataLab(database, **config['crawler'])
+    # opendatalab.crawl(is_upload=True)
 
     if setup_milvus:
         vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
