@@ -7,8 +7,8 @@ crawler:
       verbose: True
       num_datasets_per_query: 1000
     Kaggle:
-      num_attempts: 1
-      use_cache: False
+      num_attempts: null
+      use_cache: True
       query_interval: 1.0
       verbose: True
       init_page: 1

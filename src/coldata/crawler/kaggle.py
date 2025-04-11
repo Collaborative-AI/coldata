@@ -14,6 +14,7 @@ class Kaggle(Crawler):
 
     def __init__(self, database, website=None, **kwargs):
         super().__init__(self.data_name, database, website, **kwargs)
+        self.root_url = 'https://www.kaggle.com/datasets/'
         self.init_page = website[self.data_name]['init_page']
         self.tmp_metadata_filename = 'dataset-metadata.json'
         self.api = kaggle.KaggleApi()
@@ -30,19 +31,20 @@ class Kaggle(Crawler):
             datasets = load(os.path.join(self.cache_dir, 'datasets'))
             return datasets
 
-        if not os.path.exists(os.path.join(self.cache_dir, 'DatasetVersions.csv')):
-            # download https://www.kaggle.com/datasets/kaggle/meta-kaggle?select=DatasetVersions.csv
-            dataset_version_cmd = 'kaggle datasets download kaggle/meta-kaggle -f DatasetVersions.csv -p {}'.format(
-                self.cache_dir)
-            os.system(dataset_version_cmd)
+        # download https://www.kaggle.com/datasets/kaggle/meta-kaggle
+        csv_names = ['DatasetVersions.csv', 'Datasets.csv', 'Users.csv', 'Organizations.csv']
+        for i in range(len(csv_names)):
+            if not os.path.exists(os.path.join(self.cache_dir, csv_names[i])):
+                dataset_version_cmd = 'kaggle datasets download kaggle/meta-kaggle -f {} -p {}'.format(csv_names[i],
+                                                                                                       self.cache_dir)
+                os.system(dataset_version_cmd)
 
-        # TODO: need to fix and test it
         # https://chatgpt.com/share/67ee33ba-3a3c-8003-98c0-fcd8f84ff40b
         # Step 1: Load all CSVs
-        dataset_versions = pd.read_csv('DatasetVersions.csv')
-        datasets = pd.read_csv('Datasets.csv')
-        users = pd.read_csv('Users.csv')
-        orgs = pd.read_csv('Organizations.csv')
+        dataset_versions = pd.read_csv(os.path.join(self.cache_dir, 'DatasetVersions.csv'))
+        datasets = pd.read_csv(os.path.join(self.cache_dir, 'Datasets.csv'), low_memory=False)
+        users = pd.read_csv(os.path.join(self.cache_dir, 'Users.csv'))
+        orgs = pd.read_csv(os.path.join(self.cache_dir, 'Organizations.csv'))
 
         # Step 2: Get unique DatasetId and corresponding Slug
         latest_versions = dataset_versions[['DatasetId', 'Slug']].drop_duplicates()
@@ -51,10 +53,12 @@ class Kaggle(Crawler):
         merged = latest_versions.merge(datasets, left_on='DatasetId', right_on='Id', how='left')
 
         # Step 4: Map UserId to UserName
-        merged = merged.merge(users[['Id', 'UserName']], left_on='OwnerUserId', right_on='Id', how='left', suffixes=('', '_User'))
+        merged = merged.merge(users[['Id', 'UserName']], left_on='OwnerUserId', right_on='Id', how='left',
+                              suffixes=('', '_User'))
 
         # Step 5: Map OrganizationId to Slug
-        merged = merged.merge(orgs[['Id', 'Slug']], left_on='OwnerOrganizationId', right_on='Id', how='left', suffixes=('', '_Org'))
+        merged = merged.merge(orgs[['Id', 'Slug']], left_on='OwnerOrganizationId', right_on='Id', how='left',
+                              suffixes=('', '_Org'))
 
         # Step 6: Determine owner name (UserName or Org Slug)
         def resolve_owner(row):
@@ -70,37 +74,8 @@ class Kaggle(Crawler):
         merged['slug'] = merged['owner'] + '/' + merged['Slug']
 
         # Step 8: Get unique slugs
-        final_slugs = merged[['slug']].dropna().drop_duplicates().reset_index(drop=True)
+        datasets = merged['slug'].dropna().drop_duplicates().tolist()
 
-        # Optional: Save to CSV
-        final_slugs.to_csv('FinalDatasetSlugs.csv', index=False)
-
-
-        df = pd.read_csv(os.path.join(self.cache_dir, 'DatasetVersions.csv'))
-        unique_values = len(df['DatasetId'].unique())
-        print(unique_values)
-        exit()
-
-        attempts_count = 0
-        page = self.init_page
-        datasets = []
-        while True:
-            try:
-                result = self.api.dataset_list(page=page)
-                tmp = result[0]  # used for index cehck
-                datasets.extend(result)
-                attempts_count += len(result)
-                if self.num_attempts is not None and attempts_count >= self.num_attempts:
-                    print('Reached the maximum number of attempts: {}'.format(self.num_attempts))
-                    break
-                page += 1
-                time.sleep(self.query_interval)
-            except Exception as e:
-                if str(e) == 'list index out of range':
-                    print('No datasets found on page {}.'.format(page))
-                    break
-                print('Error fetching datasets on page {}: {}'.format(page, e))
-                time.sleep(self.query_interval * 10)
         save(datasets, os.path.join(self.cache_dir, 'datasets'))
         return datasets
 
@@ -146,12 +121,14 @@ class Kaggle(Crawler):
         data = []
         for i in tqdm(indices):
             dataset = self.datasets[i]
-            index = hashlib.sha256(dataset.url.encode()).hexdigest()
-            self.api.dataset_metadata(dataset.ref, path=self.cache_dir)
+            url = self.root_url + dataset
+            index = hashlib.sha256(url.encode()).hexdigest()
+            self.api.dataset_metadata(dataset, path=self.cache_dir)  # TODO: add precheck to see if already in
             with open(os.path.join(self.cache_dir, self.tmp_metadata_filename), 'r') as file:
-                data_i = json.load(file)
+                json_str = json.load(file)
+                data_i = json.loads(json_str)
             data_i['index'] = index
-            data_i['URL'] = dataset.url
+            data_i['URL'] = url
             data_i = self.make_data(data_i)
             os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))
             if is_upload:
