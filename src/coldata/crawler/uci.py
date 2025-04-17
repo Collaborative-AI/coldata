@@ -107,15 +107,18 @@ class UCI(Crawler):
         data = []
         for i in tqdm(indices):
             url_i = self.root_url + self.datasets[i]
-            page_i = requests.get(url_i)
-            soup_i = bs(page_i.text, 'html.parser')
-            data_i = self.make_data(url_i, soup_i)
-            if is_upload:
-                self._upload_data(data_i, self.verbose)
-            else:
-                if self.query_interval > 0:
-                    time.sleep(self.query_interval)
-            data.append(data_i)
+            index_i = hashlib.sha256(url_i.encode()).hexdigest()
+            existing_data = self.database.collection.find_one({'index': index_i})
+            if existing_data is None:
+                page_i = requests.get(url_i)
+                soup_i = bs(page_i.text, 'html.parser')
+                data_i = self.make_data(url_i, soup_i)
+                if is_upload:
+                    self._upload_data(data_i, self.verbose)
+                else:
+                    if self.query_interval > 0:
+                        time.sleep(self.query_interval)
+                data.append(data_i)
         return data
 
     def upload(self, data):

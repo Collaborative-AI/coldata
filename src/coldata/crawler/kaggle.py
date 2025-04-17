@@ -121,22 +121,24 @@ class Kaggle(Crawler):
         data = []
         for i in tqdm(indices):
             dataset = self.datasets[i]
-            url = self.root_url + dataset
-            index = hashlib.sha256(url.encode()).hexdigest()
-            self.api.dataset_metadata(dataset, path=self.cache_dir)  # TODO: add precheck to see if already in
-            with open(os.path.join(self.cache_dir, self.tmp_metadata_filename), 'r') as file:
-                json_str = json.load(file)
-                data_i = json.loads(json_str)
-            data_i['index'] = index
-            data_i['URL'] = url
-            data_i = self.make_data(data_i)
-            os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))
-            if is_upload:
-                self._upload_data(data_i, self.verbose)
-            else:
-                if self.query_interval > 0:
-                    time.sleep(self.query_interval)
-            data.append(data_i)
+            url_i = self.root_url + dataset
+            index_i = hashlib.sha256(url_i.encode()).hexdigest()
+            existing_data = self.database.collection.find_one({'index': index_i})
+            if existing_data is None:
+                self.api.dataset_metadata(dataset, path=self.cache_dir)
+                with open(os.path.join(self.cache_dir, self.tmp_metadata_filename), 'r') as file:
+                    json_str = json.load(file)
+                    data_i = json.loads(json_str)
+                data_i['index'] = index_i
+                data_i['URL'] = url_i
+                data_i = self.make_data(data_i)
+                os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))
+                if is_upload:
+                    self._upload_data(data_i, self.verbose)
+                else:
+                    if self.query_interval > 0:
+                        time.sleep(self.query_interval)
+                data.append(data_i)
         return data
 
     def upload(self, data):

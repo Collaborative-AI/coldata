@@ -57,7 +57,7 @@ class PapersWithCode(Crawler):
                     datasets.extend(result)
                     attempts_count += len(result)
                     if last_result == tuple(result):
-                        print('No datasets found on {} and page {}.'.format(label, page))
+                        print('No datasets found on label {} and page {}.'.format(label, page))
                         break
                     else:
                         last_result = tuple(result)
@@ -139,15 +139,18 @@ class PapersWithCode(Crawler):
         for i in tqdm(indices):
             dataset = self.datasets[i]
             url_i = self.root_url + dataset
-            page_i = requests.get(url_i)
-            soup_i = bs(page_i.text, 'html.parser')
-            data_i = self.make_data(url_i, soup_i)
-            if is_upload:
-                self._upload_data(data_i, self.verbose)
-            else:
-                if self.query_interval > 0:
-                    time.sleep(self.query_interval)
-            data.append(data_i)
+            index_i = hashlib.sha256(url_i.encode()).hexdigest()
+            existing_data = self.database.collection.find_one({'index': index_i})
+            if existing_data is None:
+                page_i = requests.get(url_i)
+                soup_i = bs(page_i.text, 'html.parser')
+                data_i = self.make_data(url_i, soup_i)
+                if is_upload:
+                    self._upload_data(data_i, self.verbose)
+                else:
+                    if self.query_interval > 0:
+                        time.sleep(self.query_interval)
+                data.append(data_i)
         return data
 
     def upload(self, data):

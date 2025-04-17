@@ -1,7 +1,6 @@
 import time
 import hashlib
 import os
-import requests
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
 from selenium import webdriver
@@ -18,9 +17,10 @@ class OpenDataLab(Crawler):
     def __init__(self, database, website=None, selenium=None, **kwargs):
         super().__init__(self.data_name, database, website, **kwargs)
         self.root_url = 'https://opendatalab.com'
-        self.driver_path = selenium.get('chromedriver_path')
-        self.driver = self._initialize_driver()
+        self.init_page = website[self.data_name]['init_page']
         self.num_datasets_per_query = website[self.data_name]['num_datasets_per_query']
+        self.chromedriver_path = selenium.get('chromedriver_path')
+        self.driver = self._initialize_driver()
         self.datasets = self.make_datasets()
         self.num_datasets = len(self.datasets)
 
@@ -28,11 +28,11 @@ class OpenDataLab(Crawler):
         options = Options()
         options.add_argument('--headless')
         options.add_argument('--disable-gpu')
-        service = Service(self.driver_path)
+        service = Service(self.chromedriver_path)
         driver = webdriver.Chrome(service=service, options=options)
         return driver
 
-    def make_datasets(self, page_no=1): # TODO: add while loop for page no, check kaggle
+    def make_datasets(self):
         if self.num_attempts is not None and self.num_attempts == 0:
             datasets = []
             return datasets
@@ -41,21 +41,55 @@ class OpenDataLab(Crawler):
             datasets = load(os.path.join(self.cache_dir, 'datasets'))
             return datasets
 
-        datasets = set()
-        url = f'{self.root_url}/?pageNo={page_no}&pageSize={self.num_datasets_per_query}&sort=all'
-        print(f'Fetching page: {url}')
+        attempts_count = 0
+        datasets = []
+        url = f'{self.root_url}/?pageNo=1&pageSize={self.num_datasets_per_query}&sort=all'
         self.driver.get(url)
-        time.sleep(5)  # Wait for JavaScript to load the content # TODO: need to check this, may be add another parameter
+        time.sleep(5)
         soup = bs(self.driver.page_source, 'html.parser')
-        # Extract dataset links
-        cards = soup.find_all('a', class_='_cardContainer_1vhh8_1')
-        for card in cards:
-            href = card.get('href')
-            if href: # TODO: check this condition
-                datasets.add(self.root_url + href if not href.startswith('http') else href)
-        datasets = sorted(list(datasets), key=lambda x: x.split('/')[-1])
+        pagination_items = soup.find_all('li', class_='ant-pagination-item')
+        last_page = int(list(pagination_items)[-1].get('title'))
+
+        for page in range(self.init_page, last_page + 1):
+            try:
+                url = f'{self.root_url}/?pageNo={page}&pageSize={self.num_datasets_per_query}&sort=all'
+                print(f'Fetching page: {url}')  # TODO: add this to other datasets
+                self.driver.get(url)
+                time.sleep(self.query_interval)  # TODO: adapt this
+                # print(self.driver.page_source)
+                soup = bs(self.driver.page_source, 'html.parser')
+                # Extract dataset links
+                cards = soup.find_all('a', class_='_cardContainer_1vhh8_1')
+                result = []
+                for card in cards:
+                    href = card.get('href')
+                    if href:
+                        result.append(self.root_url + href if not href.startswith('http') else href)
+                datasets.extend(result)
+                attempts_count += len(result)
+                # if len(result) == 0:
+                #     print('No datasets found on page {}.'.format(page))
+                #     break
+                if self.num_attempts is not None and attempts_count >= self.num_attempts:
+                    break
+                # time.sleep(self.query_interval)
+            except Exception as e:
+                print('Error fetching datasets on page {}: {}'.format(page, e))
+                time.sleep(self.query_interval * 10)  # TODO: make 10 a parameter
+            if self.num_attempts is not None and attempts_count >= self.num_attempts:
+                print('Reached the maximum number of attempts: {}'.format(self.num_attempts))
+                break
+        datasets = sorted(datasets, key=lambda x: x.split('/')[-1])  # TODO: index from num_attempts
+        print(datasets)
+        exit()
         save(datasets, os.path.join(self.cache_dir, 'datasets'))
         return datasets
+
+        # datasets = sorted(list(datasets), key=lambda x: x.split('/')[-1])
+        # print(datasets)
+        # exit()
+        # save(datasets, os.path.join(self.cache_dir, 'datasets'))
+        # return datasets
 
     def make_data(self, url):
         # Load the page content

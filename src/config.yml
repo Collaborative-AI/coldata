@@ -7,7 +7,7 @@ crawler:
       verbose: True
       num_datasets_per_query: 1000
     Kaggle:
-      num_attempts: null
+      num_attempts: 0
       use_cache: True
       query_interval: 1.0
       verbose: True
@@ -24,12 +24,12 @@ crawler:
       verbose: True
       init_page: 1
     OpenDataLab:
-      num_attempts: 0
-      use_cache: True
-      query_interval: 0.1
+      num_attempts: 40
+      use_cache: False
+      query_interval: 3
       verbose: True
       init_page: 1
-      num_datasets_per_query: 12 # TODO: this may not need
+      num_datasets_per_query: 20
   selenium:
 #    chromedriver_path: '/path/to/chromedriver'
     chromedriver_path: 'D:\ChromeDriver\chromedriver-win64\chromedriver.exe'
