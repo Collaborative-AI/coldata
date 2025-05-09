@@ -31,6 +31,6 @@ def join_content(content_list):
 
     # If the list has more than one element, ensure each element ends with punctuation
     if len(content_list) > 1:
-        content_list = [add_punctuation(s) for s in content_list]
+        content_list = [add_punctuation(s) for s in content_list if len(s) > 0]
     content = " ".join(content_list)
     return content

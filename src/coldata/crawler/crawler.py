@@ -11,6 +11,7 @@ class Crawler:
         self.num_attempts = website[self.data_name]['num_attempts']
         self.use_cache = website[self.data_name]['use_cache']
         self.query_interval = website[self.data_name]['query_interval']
+        self.query_interval_scaler = website[self.data_name]['query_interval_scaler']
         self.verbose = website[self.data_name]['verbose']
         self.cache_dir = os.path.join('output', 'cache', self.data_name)
 

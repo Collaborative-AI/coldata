@@ -4,29 +4,34 @@ crawler:
       num_attempts: 0
       use_cache: True
       query_interval: 0.1
+      query_interval_scaler: 2
       verbose: True
       num_datasets_per_query: 1000
     Kaggle:
       num_attempts: 0
       use_cache: True
       query_interval: 1.0
+      query_interval_scaler: 2
       verbose: True
       init_page: 1
     AWS:
       num_attempts: 0
       use_cache: True
       query_interval: 0.1
+      query_interval_scaler: 2
       verbose: True
     PapersWithCode:
       num_attempts: 0
       use_cache: False
       query_interval: 0.1
+      query_interval_scaler: 2
       verbose: True
       init_page: 1
     OpenDataLab:
       num_attempts: 40
-      use_cache: False
+      use_cache: True
       query_interval: 3
+      query_interval_scaler: 2
       verbose: True
       init_page: 1
       num_datasets_per_query: 20

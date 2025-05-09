@@ -45,7 +45,9 @@ class PapersWithCode(Crawler):
             while True:
                 try:
                     url = self.root_url + '/datasets/' + f'?mod={label}&page={page}'
+                    print(f'Fetching page: {url}')
                     response = requests.get(url)
+                    time.sleep(self.query_interval)
                     response.encoding = 'utf-8'
                     soup = bs(response.content, 'html.parser')
                     dataset_links = soup.select('a[href^="/dataset"]')
@@ -64,10 +66,9 @@ class PapersWithCode(Crawler):
                     if self.num_attempts is not None and attempts_count >= self.num_attempts:
                         break
                     page += 1
-                    time.sleep(self.query_interval)
                 except Exception as e:
                     print('Error fetching datasets on page {}: {}'.format(page, e))
-                    time.sleep(self.query_interval * 10)
+                    time.sleep(self.query_interval * self.query_interval_scaler)
             if self.num_attempts is not None and attempts_count >= self.num_attempts:
                 print('Reached the maximum number of attempts: {}'.format(self.num_attempts))
                 break
