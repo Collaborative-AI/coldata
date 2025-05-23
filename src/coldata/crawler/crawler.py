@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 class Crawler:
 
-    def __init__(self, data_name, database, website, **kwargs):
+    def __init__(self, data_name, database, website, parse, **kwargs):
         self.data_name = data_name
         self.database = database
         self.num_attempts = website[self.data_name]['num_attempts']
@@ -14,6 +14,7 @@ class Crawler:
         self.query_interval_scaler = website[self.data_name]['query_interval_scaler']
         self.verbose = website[self.data_name]['verbose']
         self.cache_dir = os.path.join('output', 'cache', self.data_name)
+        self.parse = parse
 
     @abstractmethod
     def crawl(self, is_upload=False):
