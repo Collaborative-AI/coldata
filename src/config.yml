@@ -1,7 +1,7 @@
 crawler:
   website:
     UCI:
-      num_attempts: 1
+      num_attempts: 0
       use_cache: True
       query_interval: 0.1
       query_interval_scaler: 2
@@ -28,9 +28,9 @@ crawler:
       verbose: True
       init_page: 1
     OpenDataLab:
-      num_attempts: 0
+      num_attempts: 2
       use_cache: True
-      query_interval: 3
+      query_interval: 2.5
       query_interval_scaler: 2
       verbose: True
       init_page: 1

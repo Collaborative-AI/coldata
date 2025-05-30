@@ -2,10 +2,10 @@ import hashlib
 import os
 import requests
 import time
+import trafilatura
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
 from .crawler import Crawler
-from .utils import clean_text, join_content
 from ..utils import save, load
 
 
@@ -52,42 +52,7 @@ class AWS(Crawler):
         data['website'] = 'AWS'
         data['index'] = index
         data['URL'] = url
-
-        elements = soup.find_all(['h1', 'p', 'a', 'h4', 'h5', 'h3'])
-
-        # Initialize variables for storing results
-        current_group = {'header': None, 'content': []}
-        footer = False
-        if_first = True
-        # Iterate through each element
-        for element in elements:
-            if element.name == 'h1' or element.name == 'h4':  # If it's a header
-                if current_group['header'] is not None:
-                    if len(current_group['content']) > 0:
-                        if if_first:
-                            data['title'] = clean_text(current_group['header'])
-                            data['keywords'] = current_group['content'][0].strip().replace('\n', ',')
-                            data['description'] = current_group['content'][1]
-                            if_first = False
-                        else:
-                            data[current_group['header']] = join_content(current_group['content'])
-                header = element.get_text()
-                current_group = {'header': header, 'content': []}
-            elif element.name in ['p', 'a', 'h5']:  # If it's a paragraph or a link
-                content = element.get_text()
-                current_group['content'].append(content)
-            else:
-                if footer:
-                    break
-                footer = True
-        if current_group['header'] is not None:
-            if len(current_group['content']) > 0:
-                if if_first:
-                    data['title'] = clean_text(current_group['header'])
-                    data['keywords'] = current_group['content'][0].strip().replace('\n', ',')
-                    data['description'] = current_group['content'][1]
-                else:
-                    data[current_group['header']] = join_content(current_group['content'])
+        data['info'] = trafilatura.extract(str(soup), output_format=self.parse['output_format'])
         return data
 
     def crawl(self, is_upload=False):

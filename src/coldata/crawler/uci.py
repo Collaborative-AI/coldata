@@ -6,7 +6,6 @@ import trafilatura
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
 from .crawler import Crawler
-from .utils import clean_text, join_content
 from ..utils import save, load
 
 
@@ -54,58 +53,7 @@ class UCI(Crawler):
         data['website'] = 'UCI'
         data['index'] = index
         data['URL'] = url
-        # Use trafilatura to extract the main content
-        # data['info'] = trafilatura.extract(str(soup), include_comments=False, include_tables=False)
-        data['info'] = trafilatura.extract(str(soup), output_format=self.parse['output_format']) # TODO: adapt this for all
-        # if downloaded:
-        #     data['text'] = downloaded
-        #     # Optionally, split out a title if available
-        #     title_tag = soup.find('h1')
-        #     if title_tag:
-        #         data['title'] = clean_text(title_tag.get_text())
-        # else:
-        #     data['text'] = ''
-        #     print(f"Warning: No content extracted from {url}")
-
-        # # Find all headers and paragraphs in the order they appear
-        # elements = soup.find_all(['h1', 'p', 'a', 'footer'])
-        # cookie_keywords = ["cookie", "privacy", "consent", "policy"]
-        #
-        # # Initialize variables for storing results
-        # current_group = {'header': None, 'content': []}
-
-        # if_first = True
-        # # Iterate through each element
-        # for element in elements:
-        #     if element.name == 'footer' or element.get('class') == ['footer'] or element.get('id') == 'footer':
-        #         break  # Exit the loop as we don't need to process elements beyond the footer
-        #     if element.name == 'h1':  # If it's a header
-        #         if current_group['header'] is not None:
-        #             if len(current_group['content']) > 0:
-        #                 if if_first:
-        #                     data['title'] = clean_text(current_group['header'])
-        #                     data['description'] = join_content(current_group['content'])
-        #                     if_first = False
-        #                 else:
-        #                     data[current_group['header']] = join_content(current_group['content'])
-        #         header = element.get_text()
-        #         current_group = {'header': header, 'content': []}
-        #     elif element.name in ['p', 'a']:  # If it's a paragraph or a link
-        #         content = element.get_text()
-        #         # Check for cookie consent keywords and skip if found
-        #         if any(keyword.lower() in content.lower() for keyword in cookie_keywords):
-        #             continue  # Skip paragraphs with cookie consent keywords
-        #
-        #         current_group['content'].append(content)
-
-        # # Add the last group after the loop ends
-        # if current_group['header'] is not None:
-        #     if len(current_group['content']) > 0:
-        #         if if_first:
-        #             data['title'] = clean_text(current_group['header'])
-        #             data['description'] = join_content(current_group['content'])
-        #         else:
-        #             data[current_group['header']] = join_content(current_group['content'])
+        data['info'] = trafilatura.extract(str(soup), output_format=self.parse['output_format'])
         return data
 
     def crawl(self, is_upload=False):

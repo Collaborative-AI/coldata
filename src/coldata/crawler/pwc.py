@@ -2,10 +2,10 @@ import hashlib
 import os
 import requests
 import time
+import trafilatura
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
 from .crawler import Crawler
-from .utils import clean_text, join_content
 from ..utils import save, load
 
 
@@ -43,11 +43,12 @@ class PapersWithCode(Crawler):
         for label in labels:
             page = self.init_page
             while True:
+                query_interval = self.query_interval
                 try:
                     url = self.root_url + '/datasets/' + f'?mod={label}&page={page}'
                     print(f'Fetching page: {url}')
                     response = requests.get(url)
-                    time.sleep(self.query_interval)
+                    time.sleep(query_interval)
                     response.encoding = 'utf-8'
                     soup = bs(response.content, 'html.parser')
                     dataset_links = soup.select('a[href^="/dataset"]')
@@ -68,7 +69,8 @@ class PapersWithCode(Crawler):
                     page += 1
                 except Exception as e:
                     print('Error fetching datasets on page {}: {}'.format(page, e))
-                    time.sleep(self.query_interval * self.query_interval_scaler)
+                    query_interval = query_interval * self.query_interval_scaler
+                    time.sleep(query_interval)
             if self.num_attempts is not None and attempts_count >= self.num_attempts:
                 print('Reached the maximum number of attempts: {}'.format(self.num_attempts))
                 break
@@ -82,50 +84,7 @@ class PapersWithCode(Crawler):
         data['website'] = 'Paper with Code'
         data['index'] = index
         data['URL'] = url
-        # Parse datasets from soup
-        elements = soup.find_all(['h1', 'p', 'a', 'footer', 'h4', 'h5'])
-        current_group = {'header': None, 'content': []}
-        cookie_keywords = ['cookie', 'privacy', 'consent', 'policy']
-        if_first = True
-        if_h4 = False
-        for element in elements:
-            if element.name == 'footer' or element.get('class') == ['footer'] or element.get('id') == 'footer':
-                break
-            if element.name == 'h1' and not if_h4:
-                if current_group['header'] is not None:
-                    if len(current_group['content']) > 0:
-                        data[current_group['header'].strip().split('\n')[0]] = join_content(current_group['content'])
-                header = element.get_text()
-                current_group = {'header': header, 'content': []}
-            elif element.name == 'h4':
-                if_h4 = True
-                if current_group['header'] is not None:
-                    if len(current_group['content']) > 0:
-                        if if_first:
-                            data['Title'] = clean_text(current_group['header'])
-                            data['Description'] = current_group['content'][2]
-                            if_first = False
-                        else:
-                            data[current_group['header'].strip().split('\n')[0]] = join_content(
-                                current_group['content'])
-                header = element.get_text()
-                current_group = {'header': header, 'content': []}
-            elif element.name in ['p', 'a']:
-                if 'https' in element.get_text():
-                    continue
-                content = element.get_text().strip().replace('Add a new result', '').replace(
-                    'Link an existing benchmark', '').replace('Add', '').replace('Remove', '')
-                if any(keyword.lower() in content.lower() for keyword in cookie_keywords):
-                    continue
-                current_group['content'].append(content)
-
-        if current_group['header'] is not None:
-            if len(current_group['content']) > 0:
-                if if_first:
-                    data['Title'] = clean_text(current_group['header'])
-                    data['Description'] = join_content(current_group['content'])
-                else:
-                    data[current_group['header'].strip().split('\n')[0]] = join_content(current_group['content'][:-4])
+        data['info'] = trafilatura.extract(str(soup), output_format=self.parse['output_format'])
         return data
 
     def crawl(self, is_upload=False):
