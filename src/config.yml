@@ -61,8 +61,9 @@ vdb:
     nlist: 128
     nprobe: 128
     limit: 4
-    renew: False
+    renew: True
     page_limit: 100
+    batch_size: 128
   text:
     chunk_size: 128
     chunk_overlap: 64

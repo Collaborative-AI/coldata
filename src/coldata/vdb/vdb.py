@@ -1,15 +1,16 @@
 import os
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings  # TODO: need better model
 from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
 from collections import OrderedDict
+from tqdm import tqdm
 
 
 class VDB:
     def __init__(self, collection_name='dataset', alias='default', host='localhost', port='19530',
-                 index_type='IVF_FLAT', metric_type='IP', nlist=1024, nprobe=1024, limit=4, page_limit=100, renew=True,
-                 chunk_size=1024, chunk_overlap=256, add_start_index=True,
+                 index_type='IVF_FLAT', metric_type='IP', nlist=1024, nprobe=1024, limit=4, renew=True,
+                 page_limit=100, batch_size=128, chunk_size=1024, chunk_overlap=256, add_start_index=True,
                  model_name='all-mpnet-base-v2', cache_folder='output', multi_process=False, show_progress=True,
                  device='cpu', normalize_embeddings=False):
         self.collection_name = collection_name
@@ -22,8 +23,9 @@ class VDB:
         self.nlist = nlist
         self.nprobe = nprobe
         self.limit = limit
-        self.page_limit = page_limit
         self.renew = renew
+        self.page_limit = page_limit
+        self.batch_size = batch_size
 
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -46,15 +48,33 @@ class VDB:
         self.load()
 
     def update(self, database):
-        documents = self.make_documents(database)
-        embeddings = self.make_embeddings_from_documents(documents)
-        if embeddings is not None:
-            index = self.make_index(documents)
-            self.insert(index, embeddings)
-            self.flush()
-        else:
-            raise ValueError('No embeddings')
+        documents, indices = self.make_documents(database) # TODO: make this as batch
+        if not documents:
+            raise ValueError('No documents to process.')
+
+        total = len(documents)
+        for i in tqdm(range(0, total, self.batch_size), disable=not self.show_progress, desc="Updating Milvus"):
+            batch_docs = documents[i:i + self.batch_size]
+            batch_indices = indices[i:i + self.batch_size]
+            texts = [doc.page_content for doc in batch_docs]
+            embeddings = self.embedding_model.embed_documents(texts)
+            if embeddings is None:
+                continue
+            self.insert(batch_indices, embeddings)
+
+        self.flush()
         return
+
+    # def update(self, database):
+    #     documents = self.make_documents(database)
+    #     embeddings = self.make_embeddings_from_documents(documents)
+    #     if embeddings is not None:
+    #         index = self.make_index(documents)
+    #         self.insert(index, embeddings)
+    #         self.flush()
+    #     else:
+    #         raise ValueError('No embeddings')
+    #     return
 
     def search(self, database, queries):
         embeddings = self.make_embedding_from_queries(queries)
@@ -83,27 +103,43 @@ class VDB:
                                           reverse=self.similarity_order == 'greater'))
             indices_i = list(result_i.keys())
             mongodb_result_i = database.collection.find({"index": {"$in": indices_i}})
+
             for j, record in enumerate(mongodb_result_i):
-                print(record)
-                index = indices_i[j]
-                result_i[index]['record'] = record
-            if 'record' in result:
-                result.append(result_i)
+                index_key = record['index']
+                if index_key in result_i:
+                    result_i[index_key]['record'] = record
+
+            result.append(result_i)
         return result
 
     def make_documents(self, database):
         collection = database.collection
         records = collection.find()
         documents = []
+        indices = []
         for record in records:
             document = self.record_to_document(record)
             splitted_documents = self.text_splitter.split_documents([document])
-            splitted_index = 0
-            for splitted_document in splitted_documents:
-                splitted_document.metadata['index'] += '_' + str(splitted_index)
-                splitted_index += 1
-            documents.extend(splitted_documents)
-        return documents
+            for i, splitted_document in enumerate(splitted_documents):
+                splitted_index = f"{splitted_document.metadata['index']}_{i}"
+                splitted_document.metadata['index'] = splitted_index
+                documents.append(splitted_document)
+                indices.append(splitted_index)
+        return documents, indices
+
+    # def make_documents(self, database):
+    #     collection = database.collection
+    #     records = collection.find()
+    #     documents = []
+    #     for record in records:
+    #         document = self.record_to_document(record)
+    #         splitted_documents = self.text_splitter.split_documents([document])
+    #         splitted_index = 0
+    #         for splitted_document in splitted_documents:
+    #             splitted_document.metadata['index'] += '_' + str(splitted_index)
+    #             splitted_index += 1
+    #         documents.extend(splitted_documents)
+    #     return documents
 
     def record_to_document(self, record):
         metadata_keys = ['_id', 'index', 'URL']  # Define the fields that should be metadata
@@ -189,7 +225,6 @@ class VDB:
         return collection
 
     def insert(self, index, embeddings):
-        # TODO: has to insert one by one
         self.collection.insert([index, embeddings])
         return
 

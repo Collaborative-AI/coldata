@@ -6,7 +6,7 @@ def main():
     mode = 'local'
     is_update = True  # set to true for first run when vdb was renewed or new documents inserted in mongodb
     config_path = 'config.yml'
-    setup_milvus = False
+    setup_milvus = True
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
     database = coldata.mongodb.MongoDB(mode=mode, **config['mongodb'])
@@ -30,11 +30,27 @@ def main():
         vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
         if is_update or config['vdb']['milvus']['renew']:
             vdb.update(database)
-        result = vdb.search(database, ['Satellite Computed Bathymetry Assessment-SCuBA'])
-        for i in range(len(result)):
-            for index in result[i]:
-                print(result[i][index]['distance'])
-                print(result[i][index])
+        print(f"Number of entities in collection: {vdb.collection.num_entities}")
+        result = vdb.search(database, ['Scene Parsing Benchmark'])
+
+        # for i in range(len(result)):
+        #     for index in result[i]:
+        #         print(result[i][index]['distance'])
+        #         print(result[i][index])
+
+        for i, result_i in enumerate(result):
+            print(f"\n=== Query {i + 1} Results ===")
+            for rank, (index, entry) in enumerate(result_i.items(), start=1):
+                distance = entry.get('distance')
+                record = entry.get('record', {})
+                url = record.get('URL', 'N/A')
+                info = record.get('info', '').replace('\n', ' ').replace('###', '').strip()
+                preview = info[:200] + '...' if len(info) > 200 else info
+
+                print(f"[{rank}] Index: {index}")
+                print(f"     Distance: {distance:.4f}")
+                print(f"     URL: {url}")
+                print(f"     Info: {preview}")
 
         if is_update:
             vdb.drop()
