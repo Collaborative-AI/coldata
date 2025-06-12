@@ -33,11 +33,6 @@ def main():
         print(f"Number of entities in collection: {vdb.collection.num_entities}")
         result = vdb.search(database, ['Scene Parsing Benchmark'])
 
-        # for i in range(len(result)):
-        #     for index in result[i]:
-        #         print(result[i][index]['distance'])
-        #         print(result[i][index])
-
         for i, result_i in enumerate(result):
             print(f"\n=== Query {i + 1} Results ===")
             for rank, (index, entry) in enumerate(result_i.items(), start=1):

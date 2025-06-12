@@ -47,34 +47,42 @@ class VDB:
         self.collection = self.make_collection()
         self.load()
 
-    def update(self, database):
-        documents, indices = self.make_documents(database) # TODO: make this as batch
-        if not documents:
-            raise ValueError('No documents to process.')
+    def _embed_and_insert(self, docs, indices):
+        texts = [doc.page_content for doc in docs]
+        embeddings = self.embedding_model.embed_documents(texts)
+        if embeddings is not None:
+            self.insert(indices, embeddings)
+        return
 
-        total = len(documents)
-        for i in tqdm(range(0, total, self.batch_size), disable=not self.show_progress, desc="Updating Milvus"):
-            batch_docs = documents[i:i + self.batch_size]
-            batch_indices = indices[i:i + self.batch_size]
-            texts = [doc.page_content for doc in batch_docs]
-            embeddings = self.embedding_model.embed_documents(texts)
-            if embeddings is None:
-                continue
-            self.insert(batch_indices, embeddings)
+    def update(self, database):
+        collection = database.collection
+        total_records = collection.count_documents({})
+        cursor = collection.find()
+
+        buffer_docs = []
+        buffer_indices = []
+
+        with tqdm(total=total_records, disable=not self.show_progress, desc="Updating Milvus") as pbar:
+            for record in cursor:
+                document = self.record_to_document(record)
+                splitted_documents = self.text_splitter.split_documents([document])
+                for i, splitted_document in enumerate(splitted_documents):
+                    splitted_index = f"{splitted_document.metadata['index']}_{i}"
+                    splitted_document.metadata['index'] = splitted_index
+                    buffer_docs.append(splitted_document)
+                    buffer_indices.append(splitted_index)
+
+                if len(buffer_docs) >= self.batch_size:
+                    self._embed_and_insert(buffer_docs, buffer_indices)
+                    buffer_docs.clear()
+                    buffer_indices.clear()
+                pbar.update(1)
+
+            if buffer_docs:
+                self._embed_and_insert(buffer_docs, buffer_indices)
 
         self.flush()
         return
-
-    # def update(self, database):
-    #     documents = self.make_documents(database)
-    #     embeddings = self.make_embeddings_from_documents(documents)
-    #     if embeddings is not None:
-    #         index = self.make_index(documents)
-    #         self.insert(index, embeddings)
-    #         self.flush()
-    #     else:
-    #         raise ValueError('No embeddings')
-    #     return
 
     def search(self, database, queries):
         embeddings = self.make_embedding_from_queries(queries)
@@ -126,20 +134,6 @@ class VDB:
                 documents.append(splitted_document)
                 indices.append(splitted_index)
         return documents, indices
-
-    # def make_documents(self, database):
-    #     collection = database.collection
-    #     records = collection.find()
-    #     documents = []
-    #     for record in records:
-    #         document = self.record_to_document(record)
-    #         splitted_documents = self.text_splitter.split_documents([document])
-    #         splitted_index = 0
-    #         for splitted_document in splitted_documents:
-    #             splitted_document.metadata['index'] += '_' + str(splitted_index)
-    #             splitted_index += 1
-    #         documents.extend(splitted_documents)
-    #     return documents
 
     def record_to_document(self, record):
         metadata_keys = ['_id', 'index', 'URL']  # Define the fields that should be metadata
