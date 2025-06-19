@@ -70,10 +70,9 @@ vdb:
     add_start_index: true
   model:
     model_name: all-mpnet-base-v2
-    cache_folder: output/model
-    multi_process: False
-    show_progress: True
+    snapshot_folder: output/snapshot
     device: cpu
+    max_length: 512
     normalize_embeddings: False
 scheduler:
   init_run: True

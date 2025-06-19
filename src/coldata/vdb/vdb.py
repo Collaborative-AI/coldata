@@ -1,18 +1,17 @@
-import os
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings  # TODO: need better model
 from pymilvus import connections, utility, DataType, FieldSchema, CollectionSchema, Collection
 from collections import OrderedDict
 from tqdm import tqdm
+from .embed import Embedding
 
 
 class VDB:
     def __init__(self, collection_name='dataset', alias='default', host='localhost', port='19530',
                  index_type='IVF_FLAT', metric_type='IP', nlist=1024, nprobe=1024, limit=4, renew=True,
                  page_limit=100, batch_size=128, chunk_size=1024, chunk_overlap=256, add_start_index=True,
-                 model_name='all-mpnet-base-v2', cache_folder='output', multi_process=False, show_progress=True,
-                 device='cpu', normalize_embeddings=False):
+                 model_name='all-mpnet-base-v2', snapshot_folder='output/snapshot', device='cpu', max_length=512,
+                 normalize_embeddings=False):
         self.collection_name = collection_name
         self.alias = alias
         self.host = host
@@ -32,10 +31,9 @@ class VDB:
         self.add_start_index = add_start_index
 
         self.model_name = model_name
-        self.cache_folder = cache_folder
-        self.multi_process = multi_process
-        self.show_progress = show_progress
+        self.snapshot_folder = snapshot_folder
         self.device = device
+        self.max_length = max_length
         self.normalize_embeddings = normalize_embeddings
 
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=self.chunk_size,
@@ -47,8 +45,8 @@ class VDB:
         self.collection = self.make_collection()
         self.load()
 
-    def _embed_and_insert(self, docs, indices):
-        texts = [doc.page_content for doc in docs]
+    def _embed_and_insert(self, texts, indices):
+        # texts = [doc.page_content for doc in docs]
         embeddings = self.embedding_model.embed_documents(texts)
         if embeddings is not None:
             self.insert(indices, embeddings)
@@ -59,7 +57,7 @@ class VDB:
         total_records = collection.count_documents({})
         cursor = collection.find()
 
-        buffer_docs = []
+        buffer_texts = []
         buffer_indices = []
 
         with tqdm(total=total_records, disable=not self.show_progress, desc="Updating Milvus") as pbar:
@@ -69,17 +67,18 @@ class VDB:
                 for i, splitted_document in enumerate(splitted_documents):
                     splitted_index = f"{splitted_document.metadata['index']}_{i}"
                     splitted_document.metadata['index'] = splitted_index
-                    buffer_docs.append(splitted_document)
+                    splitted_text = splitted_document.page_content
+                    buffer_texts.append(splitted_text)
                     buffer_indices.append(splitted_index)
 
-                if len(buffer_docs) >= self.batch_size:
-                    self._embed_and_insert(buffer_docs, buffer_indices)
-                    buffer_docs.clear()
+                if len(buffer_texts) >= self.batch_size:
+                    self._embed_and_insert(buffer_texts, buffer_indices)
+                    buffer_texts.clear()
                     buffer_indices.clear()
                 pbar.update(1)
 
-            if buffer_docs:
-                self._embed_and_insert(buffer_docs, buffer_indices)
+            if buffer_texts:
+                self._embed_and_insert(buffer_texts, buffer_indices)
 
         self.flush()
         return
@@ -144,19 +143,26 @@ class VDB:
         return document
 
     def make_embedding_model(self):
-        cache_folder = os.path.join(self.cache_folder, self.model_name)
-        model_kwargs = {'device': self.device}
-        encode_kwargs = {'normalize_embeddings': self.normalize_embeddings}
-        try:
-            model_kwargs['local_files_only'] = True
-            embedding_model = HuggingFaceEmbeddings(model_name=self.model_name, cache_folder=cache_folder,
-                                                    multi_process=self.multi_process, show_progress=self.show_progress,
-                                                    model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
-        except Exception as e:
-            model_kwargs['local_files_only'] = False
-            embedding_model = HuggingFaceEmbeddings(model_name=self.model_name, cache_folder=cache_folder,
-                                                    multi_process=self.multi_process, show_progress=self.show_progress,
-                                                    model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
+        # TODO: needs debug test
+        embedding_model = Embedding(model_name=self.model_name,
+                                    snapshot_folder=self.snapshot_folder,
+                                    device=self.device,
+                                    max_length=self.max_length,
+                                    normalize_embeddings=self.normalize_embeddings)
+
+        # cache_folder = os.path.join(self.cache_folder, self.model_name)
+        # model_kwargs = {'device': self.device}
+        # encode_kwargs = {'normalize_embeddings': self.normalize_embeddings}
+        # try:
+        #     model_kwargs['local_files_only'] = True
+        #     embedding_model = HuggingFaceEmbeddings(model_name=self.model_name, cache_folder=cache_folder,
+        #                                             multi_process=self.multi_process, show_progress=self.show_progress,
+        #                                             model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
+        # except Exception as e:
+        #     model_kwargs['local_files_only'] = False
+        #     embedding_model = HuggingFaceEmbeddings(model_name=self.model_name, cache_folder=cache_folder,
+        #                                             multi_process=self.multi_process, show_progress=self.show_progress,
+        #                                             model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
         return embedding_model
 
     def make_similarity_order(self):
