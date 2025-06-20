@@ -64,12 +64,13 @@ vdb:
     renew: True
     page_limit: 100
     batch_size: 128
+    show_progress: True
   text:
     chunk_size: 128
     chunk_overlap: 64
     add_start_index: true
   model:
-    model_name: all-mpnet-base-v2
+    model_name: Qwen/multilingual-e5-large-instruct
     snapshot_folder: output/snapshot
     device: cpu
     max_length: 512

@@ -9,7 +9,8 @@ from .embed import Embedding
 class VDB:
     def __init__(self, collection_name='dataset', alias='default', host='localhost', port='19530',
                  index_type='IVF_FLAT', metric_type='IP', nlist=1024, nprobe=1024, limit=4, renew=True,
-                 page_limit=100, batch_size=128, chunk_size=1024, chunk_overlap=256, add_start_index=True,
+                 page_limit=100, batch_size=128, show_progress=True,
+                 chunk_size=1024, chunk_overlap=256, add_start_index=True,
                  model_name='all-mpnet-base-v2', snapshot_folder='output/snapshot', device='cpu', max_length=512,
                  normalize_embeddings=False):
         self.collection_name = collection_name
@@ -25,6 +26,7 @@ class VDB:
         self.renew = renew
         self.page_limit = page_limit
         self.batch_size = batch_size
+        self.show_progress = show_progress
 
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
@@ -143,26 +145,11 @@ class VDB:
         return document
 
     def make_embedding_model(self):
-        # TODO: needs debug test
         embedding_model = Embedding(model_name=self.model_name,
                                     snapshot_folder=self.snapshot_folder,
                                     device=self.device,
                                     max_length=self.max_length,
                                     normalize_embeddings=self.normalize_embeddings)
-
-        # cache_folder = os.path.join(self.cache_folder, self.model_name)
-        # model_kwargs = {'device': self.device}
-        # encode_kwargs = {'normalize_embeddings': self.normalize_embeddings}
-        # try:
-        #     model_kwargs['local_files_only'] = True
-        #     embedding_model = HuggingFaceEmbeddings(model_name=self.model_name, cache_folder=cache_folder,
-        #                                             multi_process=self.multi_process, show_progress=self.show_progress,
-        #                                             model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
-        # except Exception as e:
-        #     model_kwargs['local_files_only'] = False
-        #     embedding_model = HuggingFaceEmbeddings(model_name=self.model_name, cache_folder=cache_folder,
-        #                                             multi_process=self.multi_process, show_progress=self.show_progress,
-        #                                             model_kwargs=model_kwargs, encode_kwargs=encode_kwargs)
         return embedding_model
 
     def make_similarity_order(self):
@@ -179,7 +166,7 @@ class VDB:
             return similarity_0 <= similarity_1
 
     def make_embedding_size(self):
-        embedding_size = self.embedding_model.client.get_sentence_embedding_dimension()
+        embedding_size = self.embedding_model.get_sentence_embedding_dimension()
         return embedding_size
 
     def make_embeddings_from_documents(self, documents):
