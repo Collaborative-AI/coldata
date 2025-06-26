@@ -11,8 +11,8 @@ class VDB:
                  index_type='IVF_FLAT', metric_type='IP', nlist=1024, nprobe=1024, limit=4, renew=True,
                  page_limit=100, batch_size=128, show_progress=True,
                  chunk_size=1024, chunk_overlap=256, add_start_index=True,
-                 model_name='all-mpnet-base-v2', snapshot_folder='output/snapshot', device='cpu', max_length=512,
-                 normalize_embeddings=False):
+                 model_name='Qwen/multilingual-e5-large-instruct', snapshot_folder='output/snapshot', 
+                 device='cpu', max_length=512, normalize_embeddings=False):
         self.collection_name = collection_name
         self.alias = alias
         self.host = host
