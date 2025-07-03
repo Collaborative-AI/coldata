@@ -26,6 +26,9 @@ def main():
     opendatalab = coldata.crawler.OpenDataLab(database, **config['crawler'])
     opendatalab.crawl(is_upload=True)
 
+    ieeedp = coldata.crawler.IEEEDataPort(database, **config['crawler'])
+    ieeedp.crawl(is_upload=True)
+
     if setup_milvus:
         vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
         if is_update or config['vdb']['milvus']['renew']:

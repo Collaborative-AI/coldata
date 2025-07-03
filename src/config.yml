@@ -28,13 +28,20 @@ crawler:
       verbose: True
       init_page: 1
     OpenDataLab:
-      num_attempts: 2
+      num_attempts: 0
       use_cache: True
       query_interval: 2.5
       query_interval_scaler: 2
       verbose: True
       init_page: 1
       num_datasets_per_query: 20
+    IEEEDataPort:
+      num_attempts: 0
+      use_cache: False
+      query_interval: 0.1
+      query_interval_scaler: 2
+      verbose: True
+      init_page: 0
   selenium:
 #    chromedriver_path: '/path/to/chromedriver'
     chromedriver_path: 'D:\ChromeDriver\chromedriver-win64\chromedriver.exe'

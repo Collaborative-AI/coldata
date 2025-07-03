@@ -24,12 +24,12 @@ We currently support crawling and indexing datasets from the following sources:
 | **UCI**                               | 675                   | ✅         |
 | **Kaggle**                            | 40,000+               | ✅         |
 | **Registry of Open Data on AWS**      | 496                   | ✅         |
-| **Papers With Code**                 | 8,966                 | ✅         |
+| **Papers With Code**                  | 8,966                 | ✅         |
 | **Figshare**                          | 1,856,206             |          |
 | **Mendeley Data**                     | 1,307,514             |          |
 | **Hugging Face Datasets**             | 88,179                |         |
 | **Zenodo**                            | 234,972               |          |
-| **IEEE Dataport**                     | 1,170                 |         |
+| **IEEE Dataport**                     | 8,928                 |         |
 | **Open Data Lab**                     | 6,432                 |  ✅        |
 | **Roboflow Universe**                 | 200,000+              |          |
 
