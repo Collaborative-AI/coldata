@@ -77,7 +77,7 @@ vdb:
     chunk_overlap: 64
     add_start_index: true
   model:
-    model_name: Qwen/multilingual-e5-large-instruct
+    model_name: intfloat/multilingual-e5-large-instruct
     snapshot_folder: output/snapshot
     device: cpu
     max_length: 512

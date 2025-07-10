@@ -29,7 +29,7 @@ We currently support crawling and indexing datasets from the following sources:
 | **Mendeley Data**                     | 1,307,514             |          |
 | **Hugging Face Datasets**             | 88,179                |         |
 | **Zenodo**                            | 234,972               |          |
-| **IEEE Dataport**                     | 8,928                 |         |
+| **IEEE Dataport**                     | 8,928                 |  ✅       |
 | **Open Data Lab**                     | 6,432                 |  ✅        |
 | **Roboflow Universe**                 | 200,000+              |          |
 

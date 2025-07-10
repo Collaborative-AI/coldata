@@ -15,23 +15,27 @@ class IEEEDataPort(Crawler):
     def __init__(self, database, website=None, **kwargs):
         super().__init__(self.data_name, database, website, **kwargs)
         self.init_page = website[self.data_name]['init_page']
-        self.base_url = 'https://ieee-dataport.org'
-        self.categories = self._fetch_categories()
-        self.datasets = self._make_datasets()
+        self.root_url = 'https://ieee-dataport.org'
+        self.categories = self.fetch_categories()
+        self.datasets = self.make_datasets()
         self.num_datasets = len(self.datasets)
 
-    def _fetch_categories(self):
-        resp = requests.get(f'{self.base_url}/datasets')
+    def fetch_categories(self):
+        resp = requests.get(f'{self.root_url}/datasets')
         resp.encoding = 'utf-8'
         soup = bs(resp.text, 'html.parser')
         tags = soup.select('a[href^="/topic-tags/"]')
         cats = sorted({a['href'].split('/')[2] for a in tags})
         return cats
 
-    def _make_datasets(self):
-        cache_file = os.path.join(self.cache_dir, 'ieee_datasets')
-        if self.use_cache and os.path.exists(cache_file):
-            return load(cache_file)
+    def make_datasets(self):
+        if self.num_attempts is not None and self.num_attempts == 0:
+            datasets = []
+            return datasets
+
+        if self.use_cache and os.path.exists(os.path.join(self.cache_dir, 'datasets')):
+            datasets = load(os.path.join(self.cache_dir, 'datasets'))
+            return datasets
 
         datasets = []
         attempts = 0
@@ -39,11 +43,11 @@ class IEEEDataPort(Crawler):
             page = 0
             last = None
             while True:
-                url = f'{self.base_url}/topic-tags/{cat}?page={page}'
+                url = f'{self.root_url}/topic-tags/{cat}?page={page}'
                 print(f'Fetching: {url}')
                 resp = requests.get(url)
                 resp.encoding = 'utf-8'
-                soup = BeautifulSoup(resp.text, 'html.parser')
+                soup = bs(resp.text, 'html.parser')
                 links = soup.select('a[href^="/documents/"]')
                 hrefs = [a['href'] for a in links]
                 hrefs = list(dict.fromkeys(hrefs))  # unique preserve order
@@ -61,55 +65,53 @@ class IEEEDataPort(Crawler):
             if self.num_attempts and attempts >= self.num_attempts:
                 break
 
-        datasets = sorted(set(datasets))
-        save(datasets, cache_file)
+        datasets = sorted(datasets, key=lambda x: x.split('/')[-1])
+        save(datasets, os.path.join(self.cache_dir, 'datasets'))
         return datasets
 
-    def make_data(self, url):
+    def make_data(self, url, soup):
         index = hashlib.sha256(url.encode()).hexdigest()
-        resp = requests.get(url)
-        resp.encoding = 'utf-8'
-        soup = bs(resp.text, 'html.parser')
-
-        data = {
-            'website': 'IEEE DataPort',
-            'index': index,
-            'URL': url,
-            'title': soup.select_one('h1.page-title').get_text(strip=True),
-            'description': trafilatura.extract(str(soup), output_format=self.parse['output_format']),
-            'category': soup.select_one('li.topic a').get_text(strip=True) if soup.select_one('li.topic a') else None,
-        }
+        data = {}
+        data['website'] = 'IEEE DataPort'
+        data['index'] = index
+        data['URL'] = url
+        data['info'] = trafilatura.extract(str(soup), output_format=self.parse['output_format'])
         return data
 
     def crawl(self, is_upload=False):
         if not self.attempts_check():
             return
-        maxi = self.num_attempts or len(self.datasets)
-        print(f'Start crawling {self.data_name} (max {maxi})')
-        results = []
-        for href in tqdm(self.datasets[:maxi]):
-            full_url = self.base_url + href
-            idx = hashlib.sha256(full_url.encode()).hexdigest()
-            if self.database.collection.find_one({'index': idx}):
-                continue
-            try:
-                data = self.make_data(full_url)
-            except Exception as e:
-                print(f'Error fetching {full_url}: {e}')
-                continue
-            if is_upload:
-                self._upload_data(data, self.verbose)
-                time.sleep(self.query_interval)
-            results.append(data)
-        return results
+        if self.num_attempts is not None:
+            indices = range(min(self.num_attempts, len(list(self.datasets))))
+        else:
+            indices = range(len(list(self.datasets)))
+        print(f'Start crawling ({self.data_name})...')
+        data = []
+        for i in tqdm(indices):
+            dataset = self.datasets[i]
+            url_i = self.root_url + dataset
+            index_i = hashlib.sha256(url_i.encode()).hexdigest()
+            existing_data = self.database.collection.find_one({'index': index_i})
+            if existing_data is None:
+                page_i = requests.get(url_i)
+                soup_i = bs(page_i.text, 'html.parser')
+                data_i = self.make_data(url_i, soup_i)
+                if is_upload:
+                    self._upload_data(data_i, self.verbose)
+                else:
+                    if self.query_interval > 0:
+                        time.sleep(self.query_interval)
+                data.append(data_i)
+        return data
 
-    def upload(self, data_list):
+    def upload(self, data):
         if not self.attempts_check():
             return
         count = 0
-        print(f'Uploading {len(data_list)} items for {self.data_name}')
-        for item in tqdm(data_list):
-            if self._upload_data(item, self.verbose):
+        print('Start uploading ({})...'.format(self.data_name))
+        for data_i in tqdm(data):
+            is_insert = self._upload_data(data_i, self.verbose)
+            if is_insert:
                 count += 1
-        print(f"Inserted {count} new records.")
+        print('Insert {} records.'.format(count))
         return
