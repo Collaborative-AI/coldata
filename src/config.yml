@@ -42,6 +42,13 @@ crawler:
       query_interval_scaler: 2
       verbose: True
       init_page: 0
+    HuggingFace:
+      num_attempts: 10
+      use_cache: True
+      query_interval: 1.0
+      query_interval_scaler: 2
+      verbose: True
+      init_page: 0
   selenium:
 #    chromedriver_path: '/path/to/chromedriver'
     chromedriver_path: 'D:\ChromeDriver\chromedriver-win64\chromedriver.exe'

@@ -29,6 +29,9 @@ def main():
     ieeedp = coldata.crawler.IEEEDataPort(database, **config['crawler'])
     ieeedp.crawl(is_upload=True)
 
+    huggingface = coldata.crawler.HuggingFace(database, **config['crawler'])
+    huggingface.crawl(is_upload=True)
+    exit()
     if setup_milvus:
         vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
         if is_update or config['vdb']['milvus']['renew']:

@@ -1,21 +1,23 @@
 import hashlib
-import kaggle
 import os
-import pandas as pd
+import requests
 import time
+import trafilatura
+from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
+from huggingface_hub import HfApi, list_datasets, dataset_info
+
 from .crawler import Crawler
 from ..utils import save, load
 
 
-class Kaggle(Crawler):
-    data_name = 'Kaggle'
+class HuggingFace(Crawler):
+    data_name = 'HuggingFace'
 
     def __init__(self, database, website=None, **kwargs):
         super().__init__(self.data_name, database, website, **kwargs)
-        self.root_url = 'https://www.kaggle.com/datasets/'
-        self.api = kaggle.KaggleApi()
-        self.api.authenticate()
+        self.root_url = 'https://huggingface.co/datasets/'
+        self.api = HfApi()
         self.datasets = self.make_datasets()
         self.num_datasets = len(self.datasets)
 
@@ -28,68 +30,71 @@ class Kaggle(Crawler):
             return load(cache_path)
 
         datasets = []
-        page = 1
-        page_size = 100  # max supported by API
-
-        while True:
-            result = self.api.datasets_list(page=page, page_size=page_size)
-            if not result:
+        attempts_count = 0
+        for ds in list_datasets():
+            datasets.append(ds.id)
+            attempts_count += 1
+            if self.num_attempts is not None and attempts_count >= self.num_attempts:
+                print('Reached the maximum number of attempts: {}'.format(self.num_attempts))
                 break
-            for ds in result:
-                if ds.ref:
-                    datasets.append(ds.ref)
-            page += 1
-            time.sleep(1)  # be polite to the API
-
         save(datasets, cache_path)
         return datasets
 
-    def make_data(self, metadata):
-        data = {
-            'website': 'Kaggle',
-            "id": metadata.id,
-            "title": metadata.title,
-            "subtitle": metadata.subtitle,
-            "description": metadata.description,
-            "owner": metadata.owner_user.username if metadata.owner_user else "",
-            "datasetSlug": metadata.slug,
-            "usabilityRating": metadata.usability_rating,
-            "totalViews": metadata.total_views,
-            "totalVotes": metadata.total_votes,
-            "totalDownloads": metadata.total_downloads,
-            "isPrivate": metadata.is_private,
-            "keywords": metadata.keywords,
-            "licenses": [license.name for license in metadata.licenses] if metadata.licenses else [],
-            "index": hashlib.sha256((self.root_url + metadata.ref).encode()).hexdigest(),
-            "URL": self.root_url + metadata.ref,
+    def make_data(self, metadata, url, soup):
+        index = hashlib.sha256(url.encode()).hexdigest()
+
+        # Extract and clean HTML
+        html_text = trafilatura.extract(str(soup), output_format=self.parse['output_format'])
+
+        # Convert structured metadata into string format
+        structured_info = {
+            "ID": metadata.id,
+            "Author": metadata.author,
+            "Private": metadata.private,
+            "Gated": metadata.gated,
+            "Disabled": metadata.disabled,
+            "Downloads": metadata.downloads,
+            "Likes": metadata.likes,
+            "Tags": ", ".join(metadata.tags) if metadata.tags else "",
+            "SHA": metadata.sha,
+            "Created at": metadata.created_at.isoformat(),
+            "Last modified": metadata.last_modified.isoformat(),
+            "License": metadata.cardData.get("license") if metadata.cardData else "",
+            "Pretty name": metadata.cardData.get("pretty_name") if metadata.cardData else "",
+            "Description (card)": metadata.cardData.get("description") if metadata.cardData else "",
         }
-        if data["description"]:
-            data["description"] = (
-                data["description"]
-                .replace("![image](", "")
-                .replace(")", "")
-            )
+
+        # Format structured info as a readable string block
+        structured_text = "\n".join(f"{k}: {v}" for k, v in structured_info.items() if v)
+
+        # Combine structured and unstructured parts into one string
+        combined_info = structured_text + "\n\n" + (html_text or "")
+        info = combined_info.strip()
+        # Final data record
+        data = {"website": "HuggingFace", "index": index, "URL": url, "info": info}
         return data
 
     def crawl(self, is_upload=False):
         if not self.attempts_check():
             return
-
-        indices = range(min(self.num_attempts, len(self.datasets))) if self.num_attempts else range(len(self.datasets))
+        if self.num_attempts is not None:
+            indices = range(min(self.num_attempts, len(list(self.datasets))))
+        else:
+            indices = range(len(list(self.datasets)))
+        print(f'Start crawling ({self.data_name})...')
         data = []
-
         for i in tqdm(indices):
-            dataset_ref = self.datasets[i]
-            url_i = self.root_url + dataset_ref
+            dataset_id = self.datasets[i]
+            url_i = self.root_url + dataset_id
             index_i = hashlib.sha256(url_i.encode()).hexdigest()
-
             existing_data = self.database.collection.find_one({'index': index_i})
             if existing_data is None:
                 try:
-                    meta = self.api.dataset_view(dataset_ref)
-                    meta.index = index_i
-                    meta.URL = url_i
-                    data_i = self.make_data(meta)
+                    metadata = dataset_info(dataset_id)
+                    page_i = requests.get(url_i)
+                    soup_i = bs(page_i.text, 'html.parser')
+                    main_card = soup_i.find('div', class_='prose')
+                    data_i = self.make_data(metadata, url_i, main_card)
                     if is_upload:
                         self._upload_data(data_i, self.verbose)
                     else:
@@ -97,7 +102,7 @@ class Kaggle(Crawler):
                             time.sleep(self.query_interval)
                     data.append(data_i)
                 except Exception as e:
-                    print(f"Error processing {dataset_ref}: {e}")
+                    print(f"Error processing {dataset_id}: {e}")
         return data
 
     def upload(self, data):

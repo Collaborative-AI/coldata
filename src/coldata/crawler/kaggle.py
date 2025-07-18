@@ -79,7 +79,7 @@ class Kaggle(Crawler):
         save(datasets, os.path.join(self.cache_dir, 'datasets'))
         return datasets
 
-    def make_data(self, metadata):
+    def make_data(self, metadata): # TODO: this needs revision
         data = {
             'website': 'Kaggle',
             "id": metadata.get("id", ""),
