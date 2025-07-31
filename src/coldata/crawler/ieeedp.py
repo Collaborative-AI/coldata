@@ -72,7 +72,7 @@ class IEEEDataPort(Crawler):
     def make_data(self, url, soup):
         index = hashlib.sha256(url.encode()).hexdigest()
         data = {}
-        data['website'] = 'IEEE DataPort'
+        data['website'] = self.data_name
         data['index'] = index
         data['URL'] = url
         data['info'] = trafilatura.extract(str(soup), output_format=self.parse['output_format'])

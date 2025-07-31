@@ -6,7 +6,6 @@ import trafilatura
 from bs4 import BeautifulSoup as bs
 from tqdm import tqdm
 from huggingface_hub import HfApi, list_datasets, dataset_info
-
 from .crawler import Crawler
 from ..utils import save, load
 

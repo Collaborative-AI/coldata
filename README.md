@@ -31,7 +31,8 @@ We currently support crawling and indexing datasets from the following sources:
 | **Zenodo**                            | 234,972               |            |
 | **IEEE Dataport**                     | 8,928                 |  ✅        |
 | **Open Data Lab**                     | 6,432                 |  ✅        |
-| **Roboflow Universe**                 | 200,000+              |            |
+| **Brain Data Science Platform**                     | 23                 |          |
+
 
 ## Installation
 
