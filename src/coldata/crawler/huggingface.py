@@ -39,12 +39,9 @@ class HuggingFace(Crawler):
         save(datasets, cache_path)
         return datasets
 
-    def make_data(self, metadata, url, soup):
-        index = hashlib.sha256(url.encode()).hexdigest()
-
+    def make_data(self, metadata, url, index, soup):
         # Extract and clean HTML
         html_text = trafilatura.extract(str(soup), output_format=self.parse['output_format'])
-
         # Convert structured metadata into string format
         structured_info = {
             "ID": metadata.id,
@@ -62,15 +59,13 @@ class HuggingFace(Crawler):
             "Pretty name": metadata.cardData.get("pretty_name") if metadata.cardData else "",
             "Description (card)": metadata.cardData.get("description") if metadata.cardData else "",
         }
-
         # Format structured info as a readable string block
         structured_text = "\n".join(f"{k}: {v}" for k, v in structured_info.items() if v)
-
         # Combine structured and unstructured parts into one string
         combined_info = structured_text + "\n\n" + (html_text or "")
         info = combined_info.strip()
         # Final data record
-        data = {"website": "HuggingFace", "index": index, "URL": url, "info": info}
+        data = {"website": self.data_name, "index": index, "URL": url, "info": info}
         return data
 
     def crawl(self, is_upload=False):
@@ -93,7 +88,7 @@ class HuggingFace(Crawler):
                     page_i = requests.get(url_i)
                     soup_i = bs(page_i.text, 'html.parser')
                     main_card = soup_i.find('div', class_='prose')
-                    data_i = self.make_data(metadata, url_i, main_card)
+                    data_i = self.make_data(metadata, url_i, index_i, main_card)
                     if is_upload:
                         self._upload_data(data_i, self.verbose)
                     else:

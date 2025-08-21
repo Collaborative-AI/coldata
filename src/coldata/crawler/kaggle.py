@@ -79,9 +79,8 @@ class Kaggle(Crawler):
         save(datasets, os.path.join(self.cache_dir, 'datasets'))
         return datasets
 
-    def make_data(self, metadata): # TODO: this needs revision
-        data = {
-            'website': self.data_name,
+    def make_data(self, metadata, url, index):
+        structured_info = {
             "id": metadata.get("id", ""),
             "title": metadata.get("title", ""),
             "subtitle": metadata.get("subtitle", ""),
@@ -99,14 +98,12 @@ class Kaggle(Crawler):
             "URL": metadata.get("URL", ""),
         }
 
-        # Clean up the description (e.g., remove markdown links)
-        data["description"] = (
-            data["description"]
-            .replace("![image](", "")
-            .replace(")", "")
-            if data["description"]
-            else ""
-        )
+        # Format structured info as a readable string block
+        structured_text = "\n".join(f"{k}: {v}" for k, v in structured_info.items() if v)
+        # Combine structured and unstructured parts into one string
+        info = structured_text.strip()
+        # Final data record
+        data = {"website": self.data_name, "index": index, "URL": url, "info": info}
         return data
 
     def crawl(self, is_upload=False):
@@ -128,10 +125,8 @@ class Kaggle(Crawler):
                 self.api.dataset_metadata(dataset, path=self.cache_dir)
                 with open(os.path.join(self.cache_dir, self.tmp_metadata_filename), 'r') as file:
                     json_str = json.load(file)
-                    data_i = json.loads(json_str)
-                data_i['index'] = index_i
-                data_i['URL'] = url_i
-                data_i = self.make_data(data_i)
+                    metadatda_i = json.loads(json_str)
+                data_i = self.make_data(metadatda_i, url_i, index_i)
                 os.remove(os.path.join(self.cache_dir, self.tmp_metadata_filename))
                 if is_upload:
                     self._upload_data(data_i, self.verbose)

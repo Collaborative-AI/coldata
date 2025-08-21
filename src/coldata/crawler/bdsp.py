@@ -45,7 +45,8 @@ class BrainDataSciencePlatform(Crawler):
             # Ensure format like '/content/<slug>/' or versioned '/content/<slug>/1.0/'
             if href.count('/') >= 2:
                 datasets.add(href.rstrip('/'))
-
+        datasets.remove('/content')
+        datasets.remove('/content/?types=0')
         datasets = sorted(datasets)
         save(datasets, cache_path)
         return datasets

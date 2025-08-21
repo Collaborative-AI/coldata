@@ -31,6 +31,10 @@ def main():
 
     huggingface = coldata.crawler.HuggingFace(database, **config['crawler'])
     huggingface.crawl(is_upload=True)
+
+    bdsp = coldata.crawler.BrainDataSciencePlatform(database, **config['crawler'])
+    bdsp.crawl(is_upload=True)
+
     exit()
     if setup_milvus:
         vdb = coldata.vdb.VDB(**config['vdb']['milvus'], **config['vdb']['text'], **config['vdb']['model'])
